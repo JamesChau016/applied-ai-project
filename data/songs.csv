@@ -9,3 +9,13 @@ id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
 8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22
 9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78
 10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35
+11,Paranoid Android,Radiohead,alternative rock,intense,0.80,140,0.45,0.50,0.15
+12,Blinding Lights,The Weeknd,synth-pop,euphoric,0.89,130,0.85,0.84,0.08
+13,Dancing Queen,ABBA,disco,happy,0.88,102,0.90,0.92,0.10
+14,505,Arctic Monkeys,indie rock,melancholic,0.65,95,0.25,0.45,0.35
+15,Uptown Funk,Bruno Mars,funk,energetic,0.87,104,0.82,0.93,0.05
+16,Broken Hearts,Twilight Echoes,indie rock,melancholic,0.68,112,0.38,0.71,0.42
+17,Symphony Dawn,Orchestra Dreams,classical,dreamy,0.40,85,0.69,0.35,0.94
+18,Thunder Strike,Rage Collective,metal,aggressive,0.96,165,0.31,0.72,0.08
+19,Island Vibes,Tropical Sounds,reggae,upbeat,0.72,95,0.77,0.68,0.65
+20,Dance Floor Fire,Groove Kings,funk,nostalgic,0.89,125,0.82,0.91,0.28

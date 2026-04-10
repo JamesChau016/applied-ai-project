@@ -17,17 +17,108 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+In the real world, music apps use other users' data or the user's own data or both to determine what songs the user is most likely to be wanting to listen to next. For example, in the collaborative approach (using other users' data), a user who likes The Weeknd will be recommended artists whom other The Weeknd lovers listen to. On the other hand, regarding the content-based approach (using that user's data), songs will be recommended based on how frequently the user listens to that genre, how much they like certain moods, energy levels, etc.
 
-Some prompts to answer:
+### Data Flow Diagram
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+```mermaid
+graph TD
+    A["INPUT: User Preferences<br/>(Genre, Mood, Energy, Acousticness)"] --> B["Load Songs from CSV<br/>(Song catalog with attributes)"]
 
-You can include a simple diagram or bullet list if helpful.
+    B --> C["Initialize Scoring<br/>For Each Song"]
+
+    C --> D["PROCESS: Score Each Song"]
+    D --> E["Calculate Mood Points<br/>(0-4 pts)"]
+    E --> F["Calculate Energy Points<br/>(0-2.5 pts)"]
+    F --> G["Calculate Genre Points<br/>(0-1.5 pts)"]
+    G --> H["Calculate Acousticness Bonus<br/>(0-1.2 pts)"]
+    H --> I["Calculate Valence Bonus<br/>(0-0.5 pts)"]
+    I --> J["Calculate Danceability Bonus<br/>(0-0.3 pts)"]
+
+    J --> K["Sum All Points<br/>Total Score"]
+    K --> L["Store Song Score"]
+
+    L --> M{"More Songs?"}
+    M -->|Yes| C
+    M -->|No| N["Sort by Score<br/>(Descending)"]
+
+    N --> O["Select Top K<br/>Recommendations"]
+
+    O --> P["OUTPUT: Ranked List<br/>1. Song A - 8.2 pts<br/>2. Song B - 7.5 pts<br/>..."]
+
+    style A fill:#e3f2fd
+    style B fill:#e3f2fd
+    style D fill:#f5f5f5
+    style E fill:#f5f5f5
+    style F fill:#f5f5f5
+    style G fill:#f5f5f5
+    style H fill:#f5f5f5
+    style I fill:#f5f5f5
+    style J fill:#f5f5f5
+    style K fill:#f5f5f5
+    style L fill:#f5f5f5
+    style N fill:#f5f5f5
+    style O fill:#f5f5f5
+    style P fill:#e8f5e9
+```
+
+### Design Overview
+
+- My system uses a content-based approach, prioritizing genre, mood, and energy.
+- The `UserProfile` stores user preferences: favorite genre, favorite mood, target energy level, and whether they like acoustic sounds.
+- The `Recommender` computes a weighted score for each song using a point-based system:
+  - Mood matching (0-4 pts) - Highest weight for mood-centric recommendations
+  - Energy proximity (0-2.5 pts) - How close to target energy
+  - Genre matching (0-1.5 pts) - Genre compatibility
+  - Acousticness (0-1.2 pts) - Bonus for acoustic elements
+  - Valence alignment (0-0.5 pts) - Emotional tone
+  - Danceability (0-0.3 pts) - Minimal weight for moody preferences
+- Top K songs are selected based on total point score.
+
+### Algorithm Recipe
+
+**For a user with mood-centric preferences:**
+
+```
+FOR each song in catalog:
+  score = 0
+
+  IF song.mood == user.favorite_mood:
+    score += 4 points
+  ELSE IF song.mood similar to favorite_mood:
+    score += 2 points
+
+  energy_diff = ABS(song.energy - user.target_energy)
+  IF energy_diff <= 0.1:
+    score += 2.5 points
+  ELSE IF energy_diff <= 0.2:
+    score += 1.5 points
+  ELSE IF energy_diff <= 0.3:
+    score += 1.0 point
+
+  IF song.genre == user.favorite_genre:
+    score += 1.5 points
+  ELSE IF song.genre related to favorite_genre:
+    score += 0.75 points
+
+  IF song.acousticness > 0.7:
+    score += 1.2 points
+  ELSE IF song.acousticness > 0.4:
+    score += 0.6 points
+
+  IF song.valence < 0.3:
+    score += 0.5 points  (lower valence = moodier)
+  ELSE IF song.valence > 0.6:
+    score -= 0.25 points (high valence ≠ moody)
+
+  ignore danceability (minimal 0.3 pts)
+
+  songs_with_scores.append((song, score))
+
+RETURN top_k(songs_with_scores, k=5)
+```
+
+**Total Possible Points:** 10 points (perfect recommendation)
 
 ---
 
@@ -41,6 +132,8 @@ You can include a simple diagram or bullet list if helpful.
    python -m venv .venv
    source .venv/bin/activate      # Mac or Linux
    .venv\Scripts\activate         # Windows
+
+   ```
 
 2. Install dependencies
 
@@ -78,13 +171,30 @@ Use this section to document the experiments you ran. For example:
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
+Key limitations of this recommender:
 
-Examples:
+- **Tiny Catalog**: Only 20 songs limits discovery and diversity
+- **No Lyrical Understanding**: Cannot understand themes, emotions, or storytelling in lyrics
+- **Mood-Centric Bias**: Heavily weights mood (4 pts) which may exclude good songs that don't match the exact mood
+- **Limited Artist Diversity**: Recommends songs from a small set of artists, missing emerging artists
+- **Energy Rigidity**: Rejects songs outside the target energy range, potentially missing hidden gems
+- **No Temporal Trends**: Doesn't account for when songs were released or cultural moments
 
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
+### Potential Biases
+
+**Expected Biases in This System:**
+
+1. **Mood Dominance Bias**: By weighting mood at 40% of the score, users who appreciate moodier aesthetics will see narrow recommendations. A user preferring "moody" will rarely get "euphoric" songs, even if they're well-crafted.
+
+2. **Genre Echo Chamber**: Genre matching (15% weight) combined with mood matching creates a feedback loop. Users who like alternative rock + moody will almost never see funk or disco songs.
+
+3. **Energy Level Discrimination**: The system penalizes songs outside the target energy range. A "chill" user (energy 0.45) will never see high-energy remixes, even of songs they love.
+
+4. **Acoustic Bias**: Giving a 1.2-point bonus strongly favors acoustic/organic instruments. Electronic and synthetic music may be systematically underrated.
+
+5. **Individual Taste Flattening**: The system assumes all moody + alternative rock + low-energy users want the same songs. It ignores individual uniqueness and niche preferences.
+
+6. **Cold Start Problem**: New songs without historical data or new artists not represented in the catalog will never be recommended, even if they're perfect matches.
 
 You will go deeper on this in your model card.
 
@@ -101,12 +211,11 @@ Write 1 to 2 paragraphs here about what you learned:
 - about how recommenders turn data into predictions
 - about where bias or unfairness could show up in systems like this
 
-
 ---
 
 ## 7. `model_card_template.md`
 
-Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}  
+Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}
 
 ```markdown
 # 🎧 Model Card - Music Recommender Simulation
@@ -158,6 +267,7 @@ Describe your dataset.
 Where does your recommender work well
 
 You can think about:
+
 - Situations where the top results "felt right"
 - Particular user profiles it served well
 - Simplicity or transparency benefits
@@ -169,6 +279,7 @@ You can think about:
 Where does your recommender struggle
 
 Some prompts:
+
 - Does it ignore some genres or moods
 - Does it treat all users as if they have the same taste shape
 - Is it biased toward high energy or one genre by default
@@ -181,6 +292,7 @@ Some prompts:
 How did you check your system
 
 Examples:
+
 - You tried multiple user profiles and wrote down whether the results matched your expectations
 - You compared your simulation to what a real app like Spotify or YouTube tends to recommend
 - You wrote tests for your scoring logic
@@ -208,4 +320,4 @@ A few sentences about what you learned:
 - What surprised you about how your system behaved
 - How did building this change how you think about real music recommenders
 - Where do you think human judgment still matters, even if the model seems "smart"
-
+```
