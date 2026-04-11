@@ -34,3 +34,12 @@ indie_melancholic = UserProfile(
     target_energy=0.65,
     likes_acoustic=True
 )
+
+# CONFLICT PROFILE - Tests contradictory preferences
+# User wants sad mood but extremely high energy (opposing signals)
+conflicting_mood_energy = UserProfile(
+    favorite_genre="pop",
+    favorite_mood="sad",
+    target_energy=0.95,
+    likes_acoustic=False
+)

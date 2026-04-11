@@ -159,6 +159,51 @@ You can add more tests in `tests/test_recommender.py`.
 
 ---
 
+## Test Profiles
+
+### Standard Profiles
+
+**Your Taste Profile**  
+![Your Taste Profile](images/profile1.png)
+
+| Genre            | Mood  | Energy | Acoustic | Purpose                       |
+| ---------------- | ----- | ------ | -------- | ----------------------------- |
+| Alternative Rock | Moody | 0.45   | ✓        | Moody, introspective listener |
+
+**Pop Fan**  
+![Pop Fan](images/profile2.png)
+
+| Genre | Mood  | Energy | Acoustic | Purpose                    |
+| ----- | ----- | ------ | -------- | -------------------------- |
+| Pop   | Happy | 0.8    | ✗        | Upbeat, energetic listener |
+
+**Lo-Fi Chill**  
+![Lo-Fi Chill](images/profile3.png)
+
+| Genre | Mood  | Energy | Acoustic | Purpose                     |
+| ----- | ----- | ------ | -------- | --------------------------- |
+| Lo-Fi | Chill | 0.4    | ✓        | Background study/work music |
+
+**Indie Melancholic**  
+![Indie Melancholic](images/profile4.png)
+
+| Genre      | Mood        | Energy | Acoustic | Purpose               |
+| ---------- | ----------- | ------ | -------- | --------------------- |
+| Indie Rock | Melancholic | 0.65   | ✓        | Emotional indie lover |
+
+### Edge Case / Adversarial Profiles
+
+**Conflicting Mood-Energy**  
+![Conflicting Mood-Energy](images/profile5.png)
+
+| Genre | Mood | Energy | Acoustic | Test Purpose                                            |
+| ----- | ---- | ------ | -------- | ------------------------------------------------------- |
+| Pop   | Sad  | 0.95   | ✗        | Tests contradictory preferences (sad mood + max energy) |
+
+**Key Finding**: The conflicting profile reveals a system limitation—it's impossible to satisfy both "sad" mood and 0.95 energy in a real music catalog, resulting in low scores (3.0-3.75) across all recommendations.
+
+---
+
 ## Experiments You Tried
 
 Use this section to document the experiments you ran. For example:
@@ -321,3 +366,8 @@ A few sentences about what you learned:
 - How did building this change how you think about real music recommenders
 - Where do you think human judgment still matters, even if the model seems "smart"
 ```
+
+
+- The AI tool helped me write codes faster, skipping the syntax and library memorization. I doubled check the results after every major logic updates by either writing tests, reading the codes, or running the program.
+- I was surprised that the recommendations are quite accurate given enough data.
+- If I wanted to expand this project, I would implement new songs recommendations rather than just ranking the ones most similar to the user's taste.
