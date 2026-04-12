@@ -10,6 +10,7 @@ You will implement the functions in recommender.py:
 """
 
 from recommender import load_songs, recommend_songs
+import textwrap
 from demo_profiles import (
     your_taste_profile,
     pop_fan,
@@ -23,6 +24,69 @@ from demo_profiles import (
 # - "mood_priority": baseline strategy
 # - "genre_priority": genre-focused strategy
 RANKING_MODE = "genre_priority"
+
+
+def _print_recommendations_table(recommendations) -> None:
+    """Print recommendations in a readable ASCII table including scoring reasons."""
+    headers = ["#", "Song", "Artist", "Score", "Reasons"]
+    rows = []
+
+    for i, rec in enumerate(recommendations, 1):
+        song, score, reasons = rec
+        # Put each scoring category on its own line for readability.
+        reason_items = [item.strip() for item in reasons.split("|") if item.strip()]
+        display_reasons = "\n".join(reason_items)
+        rows.append([
+            str(i),
+            song["title"],
+            song["artist"],
+            f"{score:.2f}",
+            display_reasons,
+        ])
+
+    # Column caps keep output readable while wrapping long text inside each column.
+    max_widths = [3, 20, 20, 7, 72]
+    col_widths = []
+    for col_idx, header in enumerate(headers):
+        max_cell = max(len(str(row[col_idx])) for row in rows)
+        col_widths.append(min(max(max_cell, len(header)), max_widths[col_idx]))
+
+    def sep(char: str = "-") -> str:
+        return "+" + "+".join(char * (w + 2) for w in col_widths) + "+"
+
+    def format_row(cells) -> str:
+        lines_per_cell = []
+        for col_idx, cell in enumerate(cells):
+            wrapped_lines = []
+            for raw_line in str(cell).splitlines() or [""]:
+                wrapped = textwrap.wrap(
+                    raw_line,
+                    width=col_widths[col_idx],
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+                wrapped_lines.extend(wrapped or [""])
+            lines_per_cell.append(wrapped_lines or [""])
+        max_lines = max(len(lines) for lines in lines_per_cell)
+        normalized = []
+        for lines in lines_per_cell:
+            padded = lines + [""] * (max_lines - len(lines))
+            normalized.append(padded)
+
+        out_lines = []
+        for line_idx in range(max_lines):
+            out = "|"
+            for col_idx, lines in enumerate(normalized):
+                out += f" {lines[line_idx].ljust(col_widths[col_idx])} |"
+            out_lines.append(out)
+        return "\n".join(out_lines)
+
+    print(sep("-"))
+    print(format_row(headers))
+    print(sep("="))
+    for row in rows:
+        print(format_row(row))
+        print(sep("-"))
 
 
 def main() -> None:
@@ -68,12 +132,8 @@ def main() -> None:
         )
         print("=" * 60 + "\n")
 
-        for i, rec in enumerate(recommendations, 1):
-            song, score, reasons = rec
-            print(f"  {i}. {song['title']} - {song['artist']}")
-            print(f"     Score: {score:.2f}")
-            print(f"     Reasons: {reasons}")
-            print()
+        _print_recommendations_table(recommendations)
+        print()
 
 
 if __name__ == "__main__":

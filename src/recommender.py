@@ -320,8 +320,31 @@ def recommend_songs(
         (song, *score_song(user_prefs, song, scoring_mode=scoring_mode))
         for song in songs
     ]
-    
-    # Sort by score (descending) and return top k
-    return sorted(scored_songs, key=lambda x: x[1], reverse=True)[:k]
+
+    # Sort by score (descending).
+    sorted_songs = sorted(scored_songs, key=lambda x: x[1], reverse=True)
+
+    # Diversity penalty pattern: prioritize distinct artists in top-k.
+    # First pass keeps at most one song per artist.
+    diverse_results: List[Tuple[Dict, float, str]] = []
+    seen_artists = set()
+    for item in sorted_songs:
+        artist = item[0]["artist"]
+        if artist in seen_artists:
+            continue
+        diverse_results.append(item)
+        seen_artists.add(artist)
+        if len(diverse_results) == k:
+            return diverse_results
+
+    # If there are not enough unique artists in the catalog, backfill by score.
+    for item in sorted_songs:
+        if item in diverse_results:
+            continue
+        diverse_results.append(item)
+        if len(diverse_results) == k:
+            break
+
+    return diverse_results
 
 
