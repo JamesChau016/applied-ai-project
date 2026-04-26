@@ -1,0 +1,32 @@
+{
+  "job_name": "tempo-bias-feature",
+  "objective": "Add tempo-bias scoring to recommendations and validate behavior with tests",
+  "scope": [
+    "src/recommender.py",
+    "tests"
+  ],
+  "retry_budget": 1,
+  "success_criteria": [
+    "Tempo-bias is integrated into score computation",
+    "Existing recommender tests still pass",
+    "New or updated tests cover tempo-bias behavior"
+  ],
+  "done_definition": [
+    "Plan/Execute/Observe/Re-plan steps are reported",
+    "All changed files are listed with intent",
+    "Validation output is summarized"
+  ],
+  "constraints": [
+    "Edit only scoped files",
+    "Avoid unrelated refactors",
+    "Stop on ambiguous failures and report blockers"
+  ],
+  "validation_commands": [
+    "python -m pytest -q"
+  ],
+  "deliverables": [
+    "Updated scoring logic",
+    "Updated tests",
+    "Run summary"
+  ]
+}

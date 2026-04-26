@@ -1,0 +1,33 @@
+{
+  "job_name": "feature-job-template",
+  "objective": "Describe the feature to implement in one sentence",
+  "scope": [
+    "src",
+    "tests"
+  ],
+  "retry_budget": 1,
+  "success_criteria": [
+    "Target feature behavior is implemented",
+    "Focused validation commands pass",
+    "Full regression command passes"
+  ],
+  "done_definition": [
+    "Plan/Execute/Observe/Re-plan log is provided",
+    "Changed files are listed with reasons",
+    "Final test evidence is included"
+  ],
+  "constraints": [
+    "Only edit files inside scope",
+    "Use minimal bounded edits",
+    "Do not use destructive git commands",
+    "Stop on ambiguous failures"
+  ],
+  "validation_commands": [
+    "python -m pytest -q"
+  ],
+  "deliverables": [
+    "Code changes",
+    "Test updates if needed",
+    "Final summary with evidence"
+  ]
+}

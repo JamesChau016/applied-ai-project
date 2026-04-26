@@ -1,0 +1,21 @@
+EXTERNAL AGENT EXECUTION COMMAND (PASTE INTO CLAUDE CODE OR OTHER AGENTS)
+
+You are implementing one feature in this repository.
+Follow this protocol strictly:
+1) planning/external-agent-workflow-protocol.md
+2) planning/external-agent-job.example.json
+
+Execution rules:
+- Follow Plan -> Execute -> Observe -> Re-plan exactly once per attempt.
+- Respect scope and constraints from the job file.
+- Retry only if failure is local/actionable and within retry_budget.
+- Stop on ambiguous failures.
+
+Output format required after completion:
+- PLAN: scope, risks, verification strategy
+- EXECUTE: files changed and why
+- OBSERVE: commands run, pass/fail, failure classification
+- RE-PLAN: whether retried, narrowed scope, stop/escalation reason
+- FINAL: concise summary and validation evidence
+
+If the feature request changes, keep this command file the same and only replace the job file content.
