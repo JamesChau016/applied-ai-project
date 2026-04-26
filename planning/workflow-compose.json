@@ -1,0 +1,8 @@
+{
+  "goal": "Add tempo-bias scoring with tests",
+  "scope": ["src", "tests"],
+  "retry_budget": 1,
+  "simulate_observation": null,
+  "success_criteria": "Validation passes for planned targets",
+  "done_definition": "Plan, execute log, observation outcome, and re-plan decision printed"
+}
