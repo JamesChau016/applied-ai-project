@@ -147,6 +147,47 @@ pip install -r requirements.txt
 python -m src.main
 ```
 
+### Agentic Workflow (Compose-Style)
+
+Instead of passing many CLI flags, define one workflow file and run it.
+
+1. Edit `planning/workflow-compose.json` with your objective and scope.
+2. Run:
+
+```bash
+python -m src.main --mode agentic --workflow-file planning/workflow-compose.json
+```
+
+You can still override settings with explicit flags when needed.
+
+```bash
+python -m src.main --mode agentic --workflow-file planning/workflow-compose.json --retry-budget 2
+```
+
+### External Agent Packet (Claude Code, etc.)
+
+Use one local command to generate a full prompt packet (command + protocol + job config):
+
+```bash
+python planning/build_external_agent_packet.py
+```
+
+Optional PowerShell helper (Windows):
+
+```powershell
+powershell -File planning/run-external-agent-packet.ps1
+```
+
+Then open and copy:
+
+- `planning/external-agent-packet.generated.md`
+
+To change the feature request, update:
+
+- `planning/external-agent-job.example.json`
+
+The generated packet can be pasted directly into Claude Code or similar agents.
+
 ### Running Tests
 
 Run the starter tests with:
@@ -366,7 +407,6 @@ A few sentences about what you learned:
 - How did building this change how you think about real music recommenders
 - Where do you think human judgment still matters, even if the model seems "smart"
 ```
-
 
 - The AI tool helped me write codes faster, skipping the syntax and library memorization. I doubled check the results after every major logic updates by either writing tests, reading the codes, or running the program.
 - I was surprised that the recommendations are quite accurate given enough data.
