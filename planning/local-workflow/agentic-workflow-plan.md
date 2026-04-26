@@ -17,10 +17,10 @@ Implement the agentic workflow as a Plan -> Execute -> Observe -> Re-plan contro
 
 ## Relevant Files
 
-- [src/main.py](../src/main.py) for the CLI entry point and new workflow mode.
-- [src/recommender.py](../src/recommender.py) to keep the current demo logic stable.
-- [tests/test_recommender.py](../tests/test_recommender.py) for regression coverage.
-- [README.md](../README.md) for user-facing instructions.
+- [src/main.py](../../src/main.py) for the CLI entry point and new workflow mode.
+- [src/recommender.py](../../src/recommender.py) to keep the current demo logic stable.
+- [tests/test_recommender.py](../../tests/test_recommender.py) for regression coverage.
+- [README.md](../../README.md) for user-facing instructions.
 
 ## Verification
 

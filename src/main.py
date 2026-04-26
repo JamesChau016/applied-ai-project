@@ -110,6 +110,7 @@ def _print_recommendations_table(recommendations) -> None:
         print(sep("-"))
 
 
+# Run the recommender demo across all built-in profiles and print results.
 def run_demo() -> None:
     songs = load_songs("data/songs.csv")
 
@@ -157,6 +158,7 @@ def run_demo() -> None:
         print()
 
 
+# Define and parse CLI arguments for both demo and agentic modes.
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Music recommender and agentic workflow runner")
     parser.add_argument(
@@ -196,6 +198,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# Load and validate a compose-style workflow JSON file.
 def _load_workflow_file(file_path: str) -> Dict[str, Any]:
     config_path = Path(file_path)
     if not config_path.exists():
@@ -211,6 +214,7 @@ def _load_workflow_file(file_path: str) -> Dict[str, Any]:
     return data
 
 
+# Merge CLI args with optional workflow-file overrides into a validated settings dict.
 def _resolve_agentic_settings(args: argparse.Namespace) -> Dict[str, Any]:
     settings: Dict[str, Any] = {
         "goal": args.goal,
@@ -243,6 +247,7 @@ def _resolve_agentic_settings(args: argparse.Namespace) -> Dict[str, Any]:
     return settings
 
 
+# Wire resolved settings into the controller and print the formatted run result.
 def _run_agentic_mode(args: argparse.Namespace) -> None:
     simulation_map = {
         "pass": FailureKind.NONE,
@@ -268,6 +273,7 @@ def _run_agentic_mode(args: argparse.Namespace) -> None:
     print(format_workflow_result(result))
 
 
+# Top-level entry: dispatch to demo mode or agentic workflow mode.
 def main() -> None:
     args = _parse_args()
     if args.mode == "agentic":

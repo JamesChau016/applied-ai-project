@@ -83,6 +83,7 @@ class WorkflowRunResult:
 class AgenticWorkflowController:
     """Deterministic Plan -> Execute -> Observe -> Re-plan controller."""
 
+    # Drive one full workflow attempt, retrying once on local actionable failure.
     def run(
         self,
         workflow_input: WorkflowInput,
@@ -135,6 +136,7 @@ class AgenticWorkflowController:
                 )
                 return WorkflowRunResult(plan, execution, observation, replan, attempts_used)
 
+    # Build a structured plan with target scope, risks, and verification strategy.
     def plan(self, objective: str, scope: List[str]) -> PlanOutput:
         normalized_scope = scope or ["src", "tests"]
         risks = [
@@ -171,6 +173,7 @@ class AgenticWorkflowController:
             risks=risks,
         )
 
+    # Apply bounded changes within the planned scope and record what was touched.
     def execute(self, plan: PlanOutput) -> ExecutionOutput:
         touched_targets = []
         actions_taken = []
@@ -179,6 +182,7 @@ class AgenticWorkflowController:
             actions_taken.append(f"Bounded change set prepared for: {target}")
         return ExecutionOutput(touched_targets=touched_targets, actions_taken=actions_taken)
 
+    # Validate planned targets via existence + AST parse, classifying any failure.
     def observe(
         self,
         plan: PlanOutput,
@@ -266,8 +270,8 @@ class AgenticWorkflowController:
             details=details,
         )
 
+    # Narrow the scope to the smallest local actionable slice based on the observation.
     def replan(self, scope: List[str], observation: ObservationOutput) -> List[str]:
-        # Re-plan by narrowing to the smallest local actionable scope.
         existing_scope = [target for target in scope if Path(target).exists()]
         if not existing_scope:
             return []
@@ -300,6 +304,7 @@ class AgenticWorkflowController:
 
         return existing_scope
 
+    # Extract (kind, target) from an observation detail string for re-plan routing.
     @staticmethod
     def _parse_failure_target(detail: str) -> Optional[tuple[str, str]]:
         missing_prefix = "Missing target: "
@@ -314,6 +319,7 @@ class AgenticWorkflowController:
 
         return None
 
+    # Decide whether the observation contains a locally fixable failure worth retrying.
     @staticmethod
     def _has_local_failure(observation: ObservationOutput) -> bool:
         return any(
@@ -322,6 +328,7 @@ class AgenticWorkflowController:
         )
 
 
+# Render a WorkflowRunResult as a human-readable phase log for the CLI.
 def format_workflow_result(result: WorkflowRunResult) -> str:
     lines = []
     lines.append("Agentic Workflow Run")

@@ -8,8 +8,8 @@ EXTERNAL AGENT EXECUTION COMMAND (PASTE INTO CLAUDE CODE OR OTHER AGENTS)
 
 You are implementing one feature in this repository.
 Follow this protocol strictly:
-1) planning/external-agent-workflow-protocol.md
-2) planning/external-agent-job.example.json
+1) planning/external-agent/protocol.md
+2) planning/external-agent/job.example.json
 
 Execution rules:
 - Follow Plan -> Execute -> Observe -> Re-plan exactly once per attempt.

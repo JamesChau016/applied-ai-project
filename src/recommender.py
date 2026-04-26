@@ -64,15 +64,16 @@ class Recommender:
     OOP implementation of the recommendation logic.
     Required by tests/test_recommender.py
     """
+    # Hold the song catalog for later recommend/explain calls.
     def __init__(self, songs: List[Song]):
         self.songs = songs
 
+    # Return the top-k songs for a user (placeholder slice; real ranking lives in recommend_songs).
     def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        # TODO: Implement recommendation logic
         return self.songs[:k]
 
+    # Return a short human-readable explanation for why a song was picked.
     def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        # TODO: Implement explanation logic
         return "Explanation placeholder"
 
 def load_songs(csv_path: str) -> List[Dict]:

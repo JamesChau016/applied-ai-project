@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT_PATH = REPO_ROOT / "planning" / "build_external_agent_packet.py"
+SCRIPT_PATH = REPO_ROOT / "planning" / "external-agent" / "build_packet.py"
 
 
 def test_build_external_agent_packet_success(tmp_path):

@@ -122,6 +122,43 @@ RETURN top_k(songs_with_scores, k=5)
 
 ---
 
+## Project Structure
+
+```
+applied-ai-project/
+├── data/
+│   └── songs.csv                     # Song catalog used by the recommender
+├── images/                           # Profile screenshots referenced in this README
+├── planning/
+│   ├── local-workflow/               # Internal Plan -> Execute -> Observe -> Re-plan mode
+│   │   ├── agentic-workflow-plan.md  # Design doc for the controller
+│   │   └── workflow-compose.json     # Compose-style config for `--mode agentic`
+│   └── external-agent/               # Prompt-packet kit for external agents (e.g. Claude Code)
+│       ├── build_packet.py           # CLI that stitches protocol + command + job into one packet
+│       ├── run_packet.ps1            # Windows PowerShell helper for build_packet.py
+│       ├── command.txt               # Injection command pasted at the top of the packet
+│       ├── protocol.md               # Strict workflow protocol for external agents
+│       ├── job.template.json         # Empty job config to copy when starting a new feature
+│       ├── job.example.json          # Concrete job config (current target: tempo-bias)
+│       └── packet.generated.md       # Output of build_packet.py (paste into the agent)
+├── src/
+│   ├── main.py                       # CLI entry: dispatches demo or agentic mode
+│   ├── recommender.py                # Song/UserProfile types, scoring, and ranking
+│   ├── demo_profiles.py              # Built-in user profiles for the demo
+│   └── agentic_workflow.py           # Plan -> Execute -> Observe -> Re-plan controller
+├── tests/
+│   ├── test_recommender.py           # Recommender API tests
+│   ├── test_agentic_workflow.py      # Workflow controller tests
+│   ├── test_main_workflow_file.py    # CLI workflow-file resolution tests
+│   └── test_external_agent_packet.py # build_packet.py end-to-end tests
+├── model_card.md                     # Model card reflection
+├── reflection.md                     # Personal reflection
+├── requirements.txt                  # Python dependencies
+└── README.md
+```
+
+---
+
 ## Getting Started
 
 ### Setup
@@ -151,17 +188,17 @@ python -m src.main
 
 Instead of passing many CLI flags, define one workflow file and run it.
 
-1. Edit `planning/workflow-compose.json` with your objective and scope.
+1. Edit `planning/local-workflow/workflow-compose.json` with your objective and scope.
 2. Run:
 
 ```bash
-python -m src.main --mode agentic --workflow-file planning/workflow-compose.json
+python -m src.main --mode agentic --workflow-file planning/local-workflow/workflow-compose.json
 ```
 
 You can still override settings with explicit flags when needed.
 
 ```bash
-python -m src.main --mode agentic --workflow-file planning/workflow-compose.json --retry-budget 2
+python -m src.main --mode agentic --workflow-file planning/local-workflow/workflow-compose.json --retry-budget 2
 ```
 
 ### External Agent Packet (Claude Code, etc.)
@@ -169,22 +206,22 @@ python -m src.main --mode agentic --workflow-file planning/workflow-compose.json
 Use one local command to generate a full prompt packet (command + protocol + job config):
 
 ```bash
-python planning/build_external_agent_packet.py
+python planning/external-agent/build_packet.py
 ```
 
 Optional PowerShell helper (Windows):
 
 ```powershell
-powershell -File planning/run-external-agent-packet.ps1
+powershell -File planning/external-agent/run_packet.ps1
 ```
 
 Then open and copy:
 
-- `planning/external-agent-packet.generated.md`
+- `planning/external-agent/packet.generated.md`
 
 To change the feature request, update:
 
-- `planning/external-agent-job.example.json`
+- `planning/external-agent/job.example.json`
 
 The generated packet can be pasted directly into Claude Code or similar agents.
 
