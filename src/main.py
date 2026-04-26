@@ -1,23 +1,44 @@
-"""
-Command line runner for the Music Recommender Simulation.
+"""Command line runner for the music recommender and local agentic workflow."""
 
-This file helps you quickly run and test your recommender.
-
-You will implement the functions in recommender.py:
-- load_songs
-- score_song
-- recommend_songs
-"""
-
-from recommender import load_songs, recommend_songs
 import textwrap
-from demo_profiles import (
-    your_taste_profile,
-    pop_fan,
-    lofi_chill,
-    indie_melancholic,
-    conflicting_mood_energy,
-)
+import argparse
+import json
+from pathlib import Path
+from typing import Any, Dict
+
+try:
+    from .recommender import load_songs, recommend_songs
+    from .demo_profiles import (
+        your_taste_profile,
+        pop_fan,
+        lofi_chill,
+        indie_melancholic,
+        conflicting_mood_energy,
+    )
+    from .agentic_workflow import (
+        AgenticWorkflowController,
+        FailureKind,
+        WorkflowContract,
+        WorkflowInput,
+        format_workflow_result,
+    )
+except ImportError:
+    # Supports running from src/ as a script while keeping module mode functional.
+    from recommender import load_songs, recommend_songs
+    from demo_profiles import (
+        your_taste_profile,
+        pop_fan,
+        lofi_chill,
+        indie_melancholic,
+        conflicting_mood_energy,
+    )
+    from agentic_workflow import (  # type: ignore
+        AgenticWorkflowController,
+        FailureKind,
+        WorkflowContract,
+        WorkflowInput,
+        format_workflow_result,
+    )
 
 
 # Easy switch between ranking modes:
@@ -89,7 +110,7 @@ def _print_recommendations_table(recommendations) -> None:
         print(sep("-"))
 
 
-def main() -> None:
+def run_demo() -> None:
     songs = load_songs("data/songs.csv")
 
     profiles = [
@@ -134,6 +155,125 @@ def main() -> None:
 
         _print_recommendations_table(recommendations)
         print()
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Music recommender and agentic workflow runner")
+    parser.add_argument(
+        "--mode",
+        choices=["demo", "agentic"],
+        default="demo",
+        help="Run recommender demo or the Plan->Execute->Observe->Re-plan workflow",
+    )
+    parser.add_argument(
+        "--goal",
+        default="Implement a small, testable repository change",
+        help="Objective for agentic workflow mode",
+    )
+    parser.add_argument(
+        "--scope",
+        nargs="*",
+        default=["src", "tests"],
+        help="Workflow target scope paths (space separated)",
+    )
+    parser.add_argument(
+        "--retry-budget",
+        type=int,
+        default=1,
+        help="Maximum Observe->Re-plan retries (default: 1)",
+    )
+    parser.add_argument(
+        "--simulate-observation",
+        choices=["pass", "actionable", "ambiguous"],
+        default=None,
+        help="Deterministic simulation mode for workflow testing",
+    )
+    parser.add_argument(
+        "--workflow-file",
+        default=None,
+        help="Path to JSON workflow config (compose-style) for agentic mode",
+    )
+    return parser.parse_args()
+
+
+def _load_workflow_file(file_path: str) -> Dict[str, Any]:
+    config_path = Path(file_path)
+    if not config_path.exists():
+        raise ValueError(f"Workflow file not found: {file_path}")
+    try:
+        raw = config_path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in workflow file {file_path}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError("Workflow file must contain a top-level JSON object")
+    return data
+
+
+def _resolve_agentic_settings(args: argparse.Namespace) -> Dict[str, Any]:
+    settings: Dict[str, Any] = {
+        "goal": args.goal,
+        "scope": args.scope,
+        "retry_budget": args.retry_budget,
+        "simulate_observation": args.simulate_observation,
+        "success_criteria": "Validation passes for planned targets",
+        "done_definition": "Plan, execute log, observation outcome, and re-plan decision printed",
+    }
+
+    if args.workflow_file:
+        file_settings = _load_workflow_file(args.workflow_file)
+        settings.update(file_settings)
+
+    if not isinstance(settings.get("scope"), list):
+        raise ValueError("Workflow setting 'scope' must be a list of paths")
+
+    simulate_value = settings.get("simulate_observation")
+    valid_simulations = {None, "pass", "actionable", "ambiguous"}
+    if simulate_value not in valid_simulations:
+        raise ValueError(
+            "Workflow setting 'simulate_observation' must be one of: pass, actionable, ambiguous"
+        )
+
+    try:
+        settings["retry_budget"] = max(0, int(settings.get("retry_budget", 1)))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Workflow setting 'retry_budget' must be an integer") from exc
+
+    return settings
+
+
+def _run_agentic_mode(args: argparse.Namespace) -> None:
+    simulation_map = {
+        "pass": FailureKind.NONE,
+        "actionable": FailureKind.ACTIONABLE,
+        "ambiguous": FailureKind.AMBIGUOUS,
+        None: None,
+    }
+    settings = _resolve_agentic_settings(args)
+    controller = AgenticWorkflowController()
+    workflow_input = WorkflowInput(
+        objective=str(settings["goal"]),
+        scope=[str(item) for item in settings["scope"]],
+        contract=WorkflowContract(
+            success_criteria=str(settings["success_criteria"]),
+            done_definition=str(settings["done_definition"]),
+            retry_budget=settings["retry_budget"],
+        ),
+    )
+    result = controller.run(
+        workflow_input=workflow_input,
+        simulate_observation=simulation_map[settings["simulate_observation"]],
+    )
+    print(format_workflow_result(result))
+
+
+def main() -> None:
+    args = _parse_args()
+    if args.mode == "agentic":
+        _run_agentic_mode(args)
+        return
+    run_demo()
 
 
 if __name__ == "__main__":

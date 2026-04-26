@@ -2,7 +2,7 @@
 Demo user profiles for testing and demonstration purposes.
 """
 
-from recommender import UserProfile
+from .recommender import UserProfile
 
 # Your taste profile - Radiohead & The Weeknd enthusiast
 # Prefers chill, moody songs like "No Surprise", "Let Down", "Save Your Tears"

@@ -37,11 +37,11 @@ class Song:
     valence: float
     danceability: float
     acousticness: float
-    popularity: float
-    release_year: int
-    instrumentalness: float
-    lyrical_sentiment: float
-    production_complexity: float
+    popularity: float = 50.0
+    release_year: int = 2015
+    instrumentalness: float = 0.3
+    lyrical_sentiment: float = 0.0
+    production_complexity: float = 0.5
 
 @dataclass
 class UserProfile:
