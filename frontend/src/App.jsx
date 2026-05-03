@@ -1,8 +1,41 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import songs from "./data/songs.json";
+import seedPlaylist from "../../data/playlist.json";
 import { recommend, GENRES, MOODS } from "./engine/recommender.js";
 import "./App.css";
+
+const PLAYLIST_KEY = "vibefinder_playlist";
+
+function loadPlaylist() {
+  try {
+    const raw = localStorage.getItem(PLAYLIST_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // fall through to seed
+  }
+  return seedPlaylist.map((s) => s.id);
+}
+
+function savePlaylist(ids) {
+  localStorage.setItem(PLAYLIST_KEY, JSON.stringify(ids));
+}
+
+function exportPlaylist(ids) {
+  const data = ids
+    .map((id) => {
+      const song = songs.find((s) => s.id === id);
+      return song ? { ...song, added_at: new Date().toISOString() } : null;
+    })
+    .filter(Boolean);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "playlist.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const INITIAL = {
   favorite_genre: "lofi",
@@ -78,7 +111,7 @@ function BreakdownChips({ breakdown }) {
   );
 }
 
-function SongCard({ entry, index }) {
+function SongCard({ entry, index, isSaved, onToggleSave }) {
   const { song, score, breakdown } = entry;
   const [expanded, setExpanded] = useState(false);
 
@@ -98,7 +131,23 @@ function SongCard({ entry, index }) {
             <h3 className="card-title">{song.title}</h3>
             <p className="card-artist">{song.artist}</p>
           </div>
-          <div className="card-score">{score.toFixed(1)}</div>
+          <div className="card-header-right">
+            <button
+              className={`save-btn ${isSaved ? "save-btn--active" : ""}`}
+              onClick={(e) => { e.stopPropagation(); onToggleSave(song.id); }}
+              title={isSaved ? "Remove from playlist" : "Add to playlist"}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M9 15.5s-6.5-4.2-6.5-8.3C2.5 4.6 4.2 3 6.2 3c1.2 0 2.3.7 2.8 1.7C9.5 3.7 10.6 3 11.8 3c2 0 3.7 1.6 3.7 4.2 0 4.1-6.5 8.3-6.5 8.3z"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  fill={isSaved ? "currentColor" : "none"}
+                />
+              </svg>
+            </button>
+            <div className="card-score">{score.toFixed(1)}</div>
+          </div>
         </div>
         <ScoreBar score={score} />
         <div className="card-tags">
@@ -380,6 +429,89 @@ function CatalogView() {
   );
 }
 
+function PlaylistView({ playlistIds, onRemove }) {
+  const playlistSongs = useMemo(
+    () => playlistIds.map((id) => songs.find((s) => s.id === id)).filter(Boolean),
+    [playlistIds]
+  );
+
+  return (
+    <motion.section
+      className="catalog-section"
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="playlist-header">
+        <h2 className="section-title">My Playlist</h2>
+        {playlistSongs.length > 0 && (
+          <button
+            className="export-btn"
+            onClick={() => exportPlaylist(playlistIds)}
+            title="Export playlist as JSON"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 2v8M4.5 7L8 10.5 11.5 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 12.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+            Export JSON
+          </button>
+        )}
+      </div>
+
+      {playlistSongs.length === 0 ? (
+        <div className="catalog-empty">
+          <p>Your playlist is empty</p>
+          <p className="playlist-hint">Save songs from your recommendations to build your playlist</p>
+        </div>
+      ) : (
+        <>
+          <div className="playlist-list">
+            <AnimatePresence mode="popLayout">
+              {playlistSongs.map((song, i) => (
+                <motion.div
+                  key={song.id}
+                  className="playlist-row"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0, padding: 0 }}
+                  transition={{ duration: 0.35, delay: i * 0.03 }}
+                  layout
+                >
+                  <div className="playlist-num">{String(i + 1).padStart(2, "0")}</div>
+                  <div className="catalog-info">
+                    <span className="catalog-title">{song.title}</span>
+                    <span className="catalog-artist">{song.artist}</span>
+                  </div>
+                  <div className="catalog-tags-col">
+                    <span className="tag tag--genre">{song.genre}</span>
+                    <span className="tag tag--mood">{song.mood}</span>
+                  </div>
+                  <div className="playlist-energy">{(song.energy * 100).toFixed(0)}% energy</div>
+                  <button
+                    className="remove-btn"
+                    onClick={() => onRemove(song.id)}
+                    title="Remove from playlist"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <line x1="4" y1="4" x2="12" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <line x1="12" y1="4" x2="4" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+          <div className="catalog-count">
+            {playlistSongs.length} {playlistSongs.length === 1 ? "song" : "songs"} saved
+          </div>
+        </>
+      )}
+    </motion.section>
+  );
+}
+
 function VinylSpinner({ spinning }) {
   return (
     <div className={`vinyl ${spinning ? "vinyl--spin" : ""}`}>
@@ -398,7 +530,18 @@ export default function App() {
   const [results, setResults] = useState(null);
   const [mode, setMode] = useState("mood_priority");
   const [tab, setTab] = useState("recommend");
+  const [playlistIds, setPlaylistIds] = useState(loadPlaylist);
   const resultsRef = useRef(null);
+
+  useEffect(() => {
+    savePlaylist(playlistIds);
+  }, [playlistIds]);
+
+  const toggleSave = useCallback((id) => {
+    setPlaylistIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
 
   const update = (key) => (e) => {
     const val = e.target ? (e.target.type === "checkbox" ? e.target.checked : e.target.value) : e;
@@ -451,7 +594,17 @@ export default function App() {
           </svg>
           All Songs
         </button>
-        <div className="tab-indicator" style={{ transform: `translateX(${tab === "recommend" ? "0" : "100"}%)` }} />
+        <button
+          className={`tab-btn ${tab === "playlist" ? "tab-btn--active" : ""}`}
+          onClick={() => setTab("playlist")}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 13.5s-5-3.2-5-6.4C3 4.8 4.3 3.5 5.9 3.5c.9 0 1.7.5 2.1 1.3.4-.8 1.2-1.3 2.1-1.3C11.7 3.5 13 4.8 13 7.1c0 3.2-5 6.4-5 6.4z" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+          </svg>
+          My Playlist
+          {playlistIds.length > 0 && <span className="tab-badge">{playlistIds.length}</span>}
+        </button>
+        <div className="tab-indicator tab-indicator--three" style={{ transform: `translateX(${tab === "recommend" ? "0" : tab === "catalog" ? "100" : "200"}%)` }} />
       </nav>
 
       <main className="main">
@@ -565,15 +718,23 @@ export default function App() {
                     <p className="results-hint">Click a card to see the scoring breakdown</p>
                     <div className="card-list">
                       {results.map((entry, i) => (
-                        <SongCard key={entry.song.id} entry={entry} index={i} />
+                        <SongCard
+                          key={entry.song.id}
+                          entry={entry}
+                          index={i}
+                          isSaved={playlistIds.includes(entry.song.id)}
+                          onToggleSave={toggleSave}
+                        />
                       ))}
                     </div>
                   </motion.section>
                 )}
               </AnimatePresence>
             </motion.div>
-          ) : (
+          ) : tab === "catalog" ? (
             <CatalogView key="catalog" />
+          ) : (
+            <PlaylistView key="playlist" playlistIds={playlistIds} onRemove={toggleSave} />
           )}
         </AnimatePresence>
       </main>

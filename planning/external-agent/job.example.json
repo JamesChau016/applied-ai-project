@@ -1,16 +1,18 @@
 {
-  "job_name": "Front-end",
-  "objective": "Add a minimalist dark-toned simple and interactable front-end for this project using React Vite",
+  "job_name": "Simple playlist",
+  "objective": "Add a simple playlist option where the user can add and save their favorite songs. Can consider a simple json database or SQLite",
   "scope": [
-    "frontend/",
+    "/src",
+    "/frontend",
+    "/data",
     "tests"
   ],
   "retry_budget": 1,
   "success_criteria": [
-    "A minimalist frontend design",
-    "A database file with the existing songs",
-    "An input form to enter user's profile",
-    "A display window to display the top 5 songs based on user's profile"
+    "An option to click and save user's favorite songs on the frontend in the top 5 option",
+    "A database to save the user's favorite song",
+    "A page on the frontend to check the saved songs",
+    "A remove option in the database display to remove from the database"
   ],
   "done_definition": [
     "Plan/Execute/Observe/Re-plan steps are reported",

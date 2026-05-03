@@ -231,6 +231,25 @@ body {
   z-index: 0;
 }
 
+.tab-indicator--three {
+  width: calc(33.333% - 3px);
+}
+
+.tab-badge {
+  background: var(--amber);
+  color: var(--bg-deep);
+  font-size: 0.62rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  margin-left: 2px;
+}
+
 /* ─── Main ────────────────────────────── */
 .main {
   flex: 1;
@@ -526,6 +545,38 @@ body {
   font-size: 0.8rem;
   color: var(--text-secondary);
   margin-top: 0.15rem;
+}
+
+.card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.save-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.save-btn:hover {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  transform: scale(1.1);
+}
+
+.save-btn--active {
+  color: var(--amber);
+  border-color: var(--amber);
 }
 
 .card-score {
@@ -957,6 +1008,100 @@ body {
   letter-spacing: 0.04em;
 }
 
+/* ─── Playlist View ─────────────────── */
+.playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.playlist-header .section-title {
+  margin-bottom: 0;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.export-btn:hover {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+}
+
+.playlist-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: normal;
+  font-family: var(--font-body);
+  margin-top: 0.3rem;
+}
+
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 140px 80px 32px;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.playlist-row:hover {
+  background: var(--bg-surface);
+}
+
+.playlist-num {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.playlist-energy {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.remove-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  justify-self: end;
+}
+
+.remove-btn:hover {
+  color: var(--negative);
+  border-color: var(--negative);
+  background: rgba(176, 80, 80, 0.1);
+}
+
 /* ─── Footer ─────────────────────────── */
 .footer {
   text-align: center;
@@ -1014,6 +1159,14 @@ body {
 
   .catalog-stats {
     padding-left: 28px;
+  }
+
+  .playlist-row {
+    grid-template-columns: 28px 1fr auto 28px;
+  }
+
+  .playlist-energy {
+    display: none;
   }
 }
 
