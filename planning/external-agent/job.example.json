@@ -1,15 +1,16 @@
 {
-  "job_name": "tempo-bias-feature",
-  "objective": "Add tempo-bias scoring to recommendations and validate behavior with tests",
+  "job_name": "Front-end",
+  "objective": "Add a minimalist dark-toned simple and interactable front-end for this project using React Vite",
   "scope": [
-    "src/recommender.py",
+    "frontend/",
     "tests"
   ],
   "retry_budget": 1,
   "success_criteria": [
-    "Tempo-bias is integrated into score computation",
-    "Existing recommender tests still pass",
-    "New or updated tests cover tempo-bias behavior"
+    "A minimalist frontend design",
+    "A database file with the existing songs",
+    "An input form to enter user's profile",
+    "A display window to display the top 5 songs based on user's profile"
   ],
   "done_definition": [
     "Plan/Execute/Observe/Re-plan steps are reported",
