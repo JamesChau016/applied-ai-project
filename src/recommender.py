@@ -22,28 +22,6 @@ SCORING_MODES = {
 }
 
 @dataclass
-class Song:
-    """
-    Represents a song and its attributes.
-    Required by tests/test_recommender.py
-    """
-    id: int
-    title: str
-    artist: str
-    genre: str
-    mood: str
-    energy: float
-    tempo_bpm: float
-    valence: float
-    danceability: float
-    acousticness: float
-    popularity: float = 50.0
-    release_year: int = 2015
-    instrumentalness: float = 0.3
-    lyrical_sentiment: float = 0.0
-    production_complexity: float = 0.5
-
-@dataclass
 class UserProfile:
     """
     Represents a user's taste preferences.
@@ -58,23 +36,6 @@ class UserProfile:
     target_instrumentalness: Optional[float] = None
     target_lyrical_sentiment: Optional[float] = None
     target_production_complexity: Optional[float] = None
-
-class Recommender:
-    """
-    OOP implementation of the recommendation logic.
-    Required by tests/test_recommender.py
-    """
-    # Hold the song catalog for later recommend/explain calls.
-    def __init__(self, songs: List[Song]):
-        self.songs = songs
-
-    # Return the top-k songs for a user (placeholder slice; real ranking lives in recommend_songs).
-    def recommend(self, user: UserProfile, k: int = 5) -> List[Song]:
-        return self.songs[:k]
-
-    # Return a short human-readable explanation for why a song was picked.
-    def explain_recommendation(self, user: UserProfile, song: Song) -> str:
-        return "Explanation placeholder"
 
 def load_songs(csv_path: str) -> List[Dict]:
     """Load songs from a CSV file and return as a list of dictionaries."""
