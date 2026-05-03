@@ -22,6 +22,7 @@ try:
         WorkflowInput,
         format_workflow_result,
     )
+    from .rag_agent import RAGRecommender
 except ImportError:
     # Supports running from src/ as a script while keeping module mode functional.
     from recommender import load_songs, recommend_songs
@@ -39,6 +40,7 @@ except ImportError:
         WorkflowInput,
         format_workflow_result,
     )
+    from rag_agent import RAGRecommender  # type: ignore
 
 
 # Easy switch between ranking modes:
@@ -163,9 +165,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Music recommender and agentic workflow runner")
     parser.add_argument(
         "--mode",
-        choices=["demo", "agentic"],
+        choices=["demo", "agentic", "rag"],
         default="demo",
-        help="Run recommender demo or the Plan->Execute->Observe->Re-plan workflow",
+        help="Run recommender demo, agentic workflow, or RAG recommendation agent",
     )
     parser.add_argument(
         "--goal",
@@ -194,6 +196,11 @@ def _parse_args() -> argparse.Namespace:
         "--workflow-file",
         default=None,
         help="Path to JSON workflow config (compose-style) for agentic mode",
+    )
+    parser.add_argument(
+        "--query",
+        default="",
+        help="Natural language query for RAG mode (e.g., 'something chill for studying')",
     )
     return parser.parse_args()
 
@@ -273,11 +280,43 @@ def _run_agentic_mode(args: argparse.Namespace) -> None:
     print(format_workflow_result(result))
 
 
-# Top-level entry: dispatch to demo mode or agentic workflow mode.
+# Run the RAG recommendation agent.
+def _run_rag_mode(args: argparse.Namespace) -> None:
+    agent = RAGRecommender()
+    result = agent.recommend(user_query=args.query)
+
+    if not result.get("recommendations"):
+        print("\nNo recommendations generated.")
+        if result.get("overall_explanation"):
+            print(f"  {result['overall_explanation']}")
+        return
+
+    print("=" * 60)
+    print(" RAG AGENT RECOMMENDATIONS")
+    print("=" * 60)
+
+    for i, rec in enumerate(result.get("recommendations", []), 1):
+        sim = f" (similarity: {rec['similarity']:.4f})" if "similarity" in rec else ""
+        src = f" [{rec.get('source', '')}]" if rec.get("source") else ""
+        print(f"\n  {i}. \"{rec.get('title', '?')}\" by {rec.get('artist', '?')}{sim}{src}")
+        if rec.get("genre") or rec.get("mood"):
+            print(f"     Genre: {rec.get('genre', 'N/A')} | Mood: {rec.get('mood', 'N/A')}")
+        print(f"     Reason: {rec.get('reason', 'N/A')}")
+
+    explanation = result.get("overall_explanation", "")
+    if explanation:
+        print(f"\n  Strategy: {explanation}")
+    print()
+
+
+# Top-level entry: dispatch to demo, agentic, or RAG mode.
 def main() -> None:
     args = _parse_args()
     if args.mode == "agentic":
         _run_agentic_mode(args)
+        return
+    if args.mode == "rag":
+        _run_rag_mode(args)
         return
     run_demo()
 
