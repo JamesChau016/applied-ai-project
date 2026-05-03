@@ -93,3 +93,31 @@ def _safe_float(val) -> float:
         return float(val) if val is not None else 0.0
     except (ValueError, TypeError):
         return 0.0
+
+
+# Well-known artists by genre — used to broaden discovery beyond the user's
+# playlist artists so we surface songs the user hasn't heard before.
+GENRE_ARTISTS = {
+    "lofi":              ["Nujabes", "J Dilla", "Tomppabeats", "Idealism"],
+    "ambient":           ["Brian Eno", "Tycho", "Boards of Canada", "Aphex Twin"],
+    "indie rock":        ["Arctic Monkeys", "Tame Impala", "Radiohead", "The Strokes"],
+    "indie pop":         ["Clairo", "Alvvays", "Mac DeMarco", "Beach House"],
+    "synth-pop":         ["The Weeknd", "Depeche Mode", "CHVRCHES", "M83"],
+    "synthwave":         ["The Midnight", "FM-84", "Gunship", "Kavinsky"],
+    "pop":               ["Dua Lipa", "Harry Styles", "Taylor Swift", "Billie Eilish"],
+    "rock":              ["Foo Fighters", "Muse", "Queens of the Stone Age", "Led Zeppelin"],
+    "alternative rock":  ["Radiohead", "Pixies", "The Smashing Pumpkins", "Nirvana"],
+    "metal":             ["Metallica", "Tool", "Gojira", "Mastodon"],
+    "jazz":              ["Miles Davis", "John Coltrane", "Kamasi Washington", "Robert Glasper"],
+    "funk":              ["Vulfpeck", "Jamiroquai", "Earth Wind and Fire", "Prince"],
+    "disco":             ["Daft Punk", "Bee Gees", "Donna Summer", "Chic"],
+    "classical":         ["Ludovico Einaudi", "Max Richter", "Olafur Arnalds", "Yiruma"],
+    "reggae":            ["Bob Marley", "Chronixx", "Protoje", "Damian Marley"],
+}
+
+
+def get_genre_artists(genre: str, exclude: set = None) -> List[str]:
+    """Return well-known artists for a genre, excluding specified names."""
+    exclude = exclude or set()
+    pool = GENRE_ARTISTS.get(genre, GENRE_ARTISTS.get("pop", []))
+    return [a for a in pool if a not in exclude]

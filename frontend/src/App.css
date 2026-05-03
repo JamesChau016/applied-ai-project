@@ -1102,6 +1102,153 @@ body {
   background: rgba(176, 80, 80, 0.1);
 }
 
+/* ─── Recommend / Discover Toggle ───── */
+.rec-mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.rec-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s;
+}
+
+.rec-mode-btn + .rec-mode-btn {
+  border-left: 1px solid var(--border);
+}
+
+.rec-mode-btn svg {
+  opacity: 0.6;
+  transition: opacity 0.25s;
+}
+
+.rec-mode-btn--active {
+  background: linear-gradient(135deg, var(--amber-dim), var(--amber));
+  color: var(--bg-deep);
+}
+
+.rec-mode-btn--active svg {
+  opacity: 1;
+}
+
+/* ─── Discover View ─────────────────── */
+.discover-prompt {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  text-align: center;
+}
+
+.discover-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 1.2rem;
+}
+
+.discover-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+.discover-stats {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.discover-stats strong {
+  color: var(--amber);
+}
+
+.discover-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+}
+
+.discover-loading-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.discover-loading-text strong {
+  color: var(--amber);
+}
+
+.discover-loading-progress {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.discover-progress-bar {
+  width: 200px;
+  height: 4px;
+  background: var(--bg-card);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.discover-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.discover-error {
+  text-align: center;
+  padding: 2rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.discover-error-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.discover-explanation {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 1.2rem;
+  padding: 0.8rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.discover-actions {
+  margin-top: 2rem;
+}
+
 /* ─── Footer ─────────────────────────── */
 .footer {
   text-align: center;

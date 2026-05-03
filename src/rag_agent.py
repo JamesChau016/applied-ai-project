@@ -10,10 +10,10 @@ from collections import Counter
 from typing import Dict, List, Optional
 
 try:
-    from .audiodb_client import AudioDBClient
+    from .audiodb_client import AudioDBClient, get_genre_artists
     from .recommender import load_songs
 except ImportError:
-    from audiodb_client import AudioDBClient
+    from audiodb_client import AudioDBClient, get_genre_artists
     from recommender import load_songs
 
 
@@ -72,34 +72,54 @@ class SongRetriever:
         self.audiodb = audiodb or AudioDBClient()
         self.songs_csv_path = songs_csv_path
 
-    def retrieve(self, profile: dict, favorite_ids: set) -> List[dict]:
+    def retrieve(self, profile: dict, favorite_ids: set,
+                  include_local: bool = True) -> List[dict]:
         """Fetch candidate songs based on user profile.
 
-        Combines TheAudioDB top tracks for favorite artists with local catalog.
-        Excludes songs already in the user's favorites.
+        Combines TheAudioDB top tracks for favorite artists AND genre-related
+        artists with the local catalog.  Excludes songs already in the user's
+        favorites.
         """
         candidates = []
         seen_keys = set()
+        tried_artists = set()
 
-        # Fetch top tracks from TheAudioDB for each favorite artist
-        for artist in profile.get("artists", []):
+        def _fetch_artist(artist: str) -> int:
+            if artist in tried_artists:
+                return 0
+            tried_artists.add(artist)
             print(f"  Fetching tracks for '{artist}' from TheAudioDB...")
             tracks = self.audiodb.get_top_tracks(artist)
+            added = 0
             for track in tracks:
                 key = (track["title"].lower(), track["artist"].lower())
                 if key not in seen_keys:
                     seen_keys.add(key)
                     candidates.append(track)
+                    added += 1
+            return added
 
-        # Add local catalog songs not already in favorites
-        local_songs = load_songs(self.songs_csv_path)
-        for song in local_songs:
-            if song["id"] not in favorite_ids:
-                key = (song["title"].lower(), song["artist"].lower())
-                if key not in seen_keys:
-                    seen_keys.add(key)
-                    song["source"] = "local"
-                    candidates.append(song)
+        # 1. Fetch top tracks for each favorite artist
+        for artist in profile.get("artists", []):
+            _fetch_artist(artist)
+
+        # 2. Broaden search: fetch genre-related artists so results aren't
+        #    limited to the user's existing favorites.
+        for genre in profile.get("genres", []):
+            related = get_genre_artists(genre, exclude=tried_artists)
+            for artist in related:
+                _fetch_artist(artist)
+
+        # 3. Add local catalog songs not already in favorites
+        if include_local:
+            local_songs = load_songs(self.songs_csv_path)
+            for song in local_songs:
+                if song["id"] not in favorite_ids:
+                    key = (song["title"].lower(), song["artist"].lower())
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        song["source"] = "local"
+                        candidates.append(song)
 
         print(f"  Retrieved {len(candidates)} candidate songs total.")
         return candidates
@@ -171,8 +191,8 @@ class EmbeddingModel:
 def _generate_reason(song: dict, profile: dict) -> str:
     """Generate a human-readable reason why a song matches the profile."""
     reasons = []
-    song_genre = song.get("genre", "").lower()
-    song_mood = song.get("mood", "").lower()
+    song_genre = (song.get("genre") or "").lower()
+    song_mood = (song.get("mood") or "").lower()
 
     for g in profile.get("genres", []):
         if g.lower() in song_genre or song_genre in g.lower():
@@ -269,6 +289,106 @@ class RAGRecommender:
                 f"Ranked {len(candidates)} candidates by semantic similarity to your "
                 f"taste profile ({', '.join(self.profile['genres'])}, "
                 f"{', '.join(self.profile['moods'])}) using all-MiniLM-L6-v2 embeddings."
+            ),
+        }
+
+
+    def discover(self, playlist: List[dict], k: int = 10) -> dict:
+        """Discover new songs NOT in the local 20-song catalog.
+
+        Accepts the user's current playlist directly (from the frontend) rather
+        than reading from disk.  Uses the full RAG pipeline: profile analysis,
+        broad retrieval (favorite + genre-related artists via AudioDB), semantic
+        embedding, and similarity ranking.
+        """
+        if not playlist:
+            return {"recommendations": [], "overall_explanation": "Playlist is empty."}
+
+        # Build profile from the supplied playlist
+        artists = list({s["artist"] for s in playlist if "artist" in s})
+        genres = [s["genre"] for s in playlist if "genre" in s]
+        moods = [s["mood"] for s in playlist if "mood" in s]
+        genre_counts = Counter(genres)
+        mood_counts = Counter(moods)
+
+        profile = {
+            "artists": artists,
+            "genres": [g for g, _ in genre_counts.most_common(3)],
+            "moods": [m for m, _ in mood_counts.most_common(3)],
+            "avg_energy": _avg([s.get("energy", 0.5) for s in playlist]),
+            "likes_acoustic": _avg([s.get("acousticness", 0.5) for s in playlist]) > 0.5,
+        }
+
+        print("\n[RAG Agent – Discover] Profile:", profile)
+
+        # Retrieve candidates — skip local catalog songs entirely
+        favorite_ids = {s["id"] for s in playlist if "id" in s}
+        candidates = self.retriever.retrieve(profile, favorite_ids, include_local=False)
+
+        # Also exclude anything that's in the local 20-song catalog by (title, artist)
+        local_songs = load_songs(self.songs_csv_path)
+        local_keys = {(s["title"].lower(), s["artist"].lower()) for s in local_songs}
+        candidates = [
+            c for c in candidates
+            if (c["title"].lower(), c["artist"].lower()) not in local_keys
+        ]
+
+        if not candidates:
+            return {
+                "recommendations": [],
+                "overall_explanation": "No external songs found. Try adding more songs to your playlist.",
+            }
+
+        # Embed & rank
+        print(f"\n[RAG Agent – Discover] Ranking {len(candidates)} candidates...")
+        profile_text = _profile_to_text(profile)
+        favorite_texts = [_song_to_text(s) for s in playlist]
+        candidate_texts = [_song_to_text(c) for c in candidates]
+
+        query_text = profile_text + ". Favorites: " + "; ".join(favorite_texts)
+        all_texts = [query_text] + candidate_texts
+        embeddings = self.embedding_model.encode(all_texts)
+        query_embedding = embeddings[0]
+        candidate_embeddings = embeddings[1:]
+        scores = self.embedding_model.similarity(query_embedding, candidate_embeddings)
+
+        scored = list(zip(candidates, scores))
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        # Artist diversity — max 3 songs per artist
+        artist_count: Dict[str, int] = {}
+        top_k = []
+        for song, score in scored:
+            if len(top_k) >= k:
+                break
+            a = song.get("artist", "")
+            if artist_count.get(a, 0) < 3:
+                artist_count[a] = artist_count.get(a, 0) + 1
+                top_k.append((song, score))
+
+        recommendations = []
+        for song, score in top_k:
+            reason = _generate_reason(song, profile)
+            rec = {
+                "title": song.get("title", "Unknown"),
+                "artist": song.get("artist", "Unknown"),
+                "genre": song.get("genre", ""),
+                "mood": song.get("mood", ""),
+                "style": song.get("style", ""),
+                "theme": song.get("theme", ""),
+                "similarity": round(float(score), 4),
+                "reason": reason,
+                "source": song.get("source", "audiodb"),
+            }
+            recommendations.append(rec)
+
+        return {
+            "recommendations": recommendations,
+            "overall_explanation": (
+                f"Discovered {len(recommendations)} songs from {len(artist_count)} artists. "
+                f"Ranked {len(candidates)} AudioDB candidates by semantic similarity to your "
+                f"taste profile ({', '.join(profile['genres'])}, {', '.join(profile['moods'])}) "
+                f"using all-MiniLM-L6-v2 embeddings."
             ),
         }
 

@@ -2,3 +2,5 @@ pandas
 pytest
 streamlit
 sentence-transformers
+flask
+flask-cors

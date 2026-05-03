@@ -8,15 +8,40 @@ import SongCard from "./components/SongCard.jsx";
 import VinylSpinner from "./components/VinylSpinner.jsx";
 import CatalogView from "./views/CatalogView.jsx";
 import PlaylistView from "./views/PlaylistView.jsx";
+import DiscoverView from "./views/DiscoverView.jsx";
 import "./App.css";
+
+const DISCOVERED_KEY = "vibefinder_discovered_songs";
 
 const PLAYLIST_KEY = "vibefinder_playlist";
 
 const seedPlaylistById = new Map(seedPlaylist.map((song) => [song.id, song]));
 
+function loadDiscoveredSongs() {
+  try {
+    const raw = localStorage.getItem(DISCOVERED_KEY);
+    return raw ? new Map(Object.entries(JSON.parse(raw))) : new Map();
+  } catch {
+    return new Map();
+  }
+}
+
+const discoveredSongsMap = loadDiscoveredSongs();
+
+function saveDiscoveredSong(song) {
+  discoveredSongsMap.set(String(song.id), song);
+  localStorage.setItem(
+    DISCOVERED_KEY,
+    JSON.stringify(Object.fromEntries(discoveredSongsMap)),
+  );
+}
+
 function getPlaylistSong(id) {
   return (
-    seedPlaylistById.get(id) || songs.find((song) => song.id === id) || null
+    seedPlaylistById.get(id) ||
+    songs.find((song) => song.id === id) ||
+    discoveredSongsMap.get(String(id)) ||
+    null
   );
 }
 
@@ -72,6 +97,7 @@ export default function App() {
   const [results, setResults] = useState(null);
   const [mode, setMode] = useState("mood_priority");
   const [tab, setTab] = useState("recommend");
+  const [recMode, setRecMode] = useState("recommend"); // "recommend" | "discover"
   const [playlistIds, setPlaylistIds] = useState(loadPlaylist);
   const resultsRef = useRef(null);
   const playlistSongs = useMemo(
@@ -223,150 +249,205 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.35 }}
             >
-              <motion.section
-                className="form-section"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <h2 className="section-title">Your Taste Profile</h2>
-
-                <div className="form-grid">
-                  <div className="field">
-                    <label className="label">Genre</label>
-                    <select
-                      className="select"
-                      value={prefs.favorite_genre}
-                      onChange={update("favorite_genre")}
-                    >
-                      {GENRES.map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="field">
-                    <label className="label">Mood</label>
-                    <select
-                      className="select"
-                      value={prefs.favorite_mood}
-                      onChange={update("favorite_mood")}
-                    >
-                      {MOODS.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="field field--full">
-                    <label className="label">Energy Level</label>
-                    <EnergySlider
-                      value={prefs.target_energy}
-                      onChange={(v) =>
-                        setPrefs((p) => ({ ...p, target_energy: v }))
-                      }
-                    />
-                  </div>
-
-                  <div className="field field--full">
-                    <label className="label">Preferred Popularity</label>
-                    <div className="slider-wrap">
-                      <div className="slider-track">
-                        <div
-                          className="slider-fill"
-                          style={{ width: `${prefs.target_popularity}%` }}
-                        />
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={prefs.target_popularity}
-                        onChange={update("target_popularity")}
-                      />
-                      <div className="slider-labels">
-                        <span>Underground</span>
-                        <span className="slider-value">
-                          {prefs.target_popularity}
-                        </span>
-                        <span>Mainstream</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="field">
-                    <label className="toggle-label">
-                      <input
-                        type="checkbox"
-                        checked={prefs.likes_acoustic}
-                        onChange={update("likes_acoustic")}
-                      />
-                      <span className="toggle-switch" />
-                      <span>Prefer acoustic sounds</span>
-                    </label>
-                  </div>
-
-                  <div className="field">
-                    <label className="label">Scoring Mode</label>
-                    <div className="mode-toggle">
-                      <button
-                        className={`mode-btn ${mode === "mood_priority" ? "mode-btn--active" : ""}`}
-                        onClick={() => setMode("mood_priority")}
-                      >
-                        Mood Priority
-                      </button>
-                      <button
-                        className={`mode-btn ${mode === "genre_priority" ? "mode-btn--active" : ""}`}
-                        onClick={() => setMode("genre_priority")}
-                      >
-                        Genre Priority
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <motion.button
-                  className="cta"
-                  onClick={handleRecommend}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="rec-mode-toggle">
+                <button
+                  className={`rec-mode-btn ${recMode === "recommend" ? "rec-mode-btn--active" : ""}`}
+                  onClick={() => setRecMode("recommend")}
                 >
-                  Find My Vibe
-                </motion.button>
-              </motion.section>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M8 1L10.2 5.5L15 6.2L11.5 9.6L12.3 14.4L8 12.1L3.7 14.4L4.5 9.6L1 6.2L5.8 5.5L8 1Z"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Recommend
+                </button>
+                <button
+                  className={`rec-mode-btn ${recMode === "discover" ? "rec-mode-btn--active" : ""}`}
+                  onClick={() => setRecMode("discover")}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
+                    <path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5" stroke="currentColor" strokeWidth="1" />
+                    <path d="M6.5 6.5L9 7L9.5 9.5L7 9Z" fill="currentColor" />
+                  </svg>
+                  Discover
+                </button>
+              </div>
 
               <AnimatePresence mode="wait">
-                {results && (
-                  <motion.section
-                    ref={resultsRef}
-                    className="results-section"
-                    key={JSON.stringify(results.map((r) => r.song.id))}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
+                {recMode === "recommend" ? (
+                  <motion.div
+                    key="rec-recommend"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.25 }}
                   >
-                    <h2 className="section-title">Top 5 Recommendations</h2>
-                    <p className="results-hint">
-                      Click a card to see the scoring breakdown
-                    </p>
-                    <div className="card-list">
-                      {results.map((entry, i) => (
-                        <SongCard
-                          key={entry.song.id}
-                          entry={entry}
-                          index={i}
-                          isSaved={playlistIds.includes(entry.song.id)}
-                          onToggleSave={toggleSave}
-                        />
-                      ))}
-                    </div>
-                  </motion.section>
+                    <motion.section
+                      className="form-section"
+                      initial={{ opacity: 0, y: 40 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                    >
+                      <h2 className="section-title">Your Taste Profile</h2>
+
+                      <div className="form-grid">
+                        <div className="field">
+                          <label className="label">Genre</label>
+                          <select
+                            className="select"
+                            value={prefs.favorite_genre}
+                            onChange={update("favorite_genre")}
+                          >
+                            {GENRES.map((g) => (
+                              <option key={g} value={g}>
+                                {g}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="field">
+                          <label className="label">Mood</label>
+                          <select
+                            className="select"
+                            value={prefs.favorite_mood}
+                            onChange={update("favorite_mood")}
+                          >
+                            {MOODS.map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="field field--full">
+                          <label className="label">Energy Level</label>
+                          <EnergySlider
+                            value={prefs.target_energy}
+                            onChange={(v) =>
+                              setPrefs((p) => ({ ...p, target_energy: v }))
+                            }
+                          />
+                        </div>
+
+                        <div className="field field--full">
+                          <label className="label">Preferred Popularity</label>
+                          <div className="slider-wrap">
+                            <div className="slider-track">
+                              <div
+                                className="slider-fill"
+                                style={{ width: `${prefs.target_popularity}%` }}
+                              />
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              step="5"
+                              value={prefs.target_popularity}
+                              onChange={update("target_popularity")}
+                            />
+                            <div className="slider-labels">
+                              <span>Underground</span>
+                              <span className="slider-value">
+                                {prefs.target_popularity}
+                              </span>
+                              <span>Mainstream</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="field">
+                          <label className="toggle-label">
+                            <input
+                              type="checkbox"
+                              checked={prefs.likes_acoustic}
+                              onChange={update("likes_acoustic")}
+                            />
+                            <span className="toggle-switch" />
+                            <span>Prefer acoustic sounds</span>
+                          </label>
+                        </div>
+
+                        <div className="field">
+                          <label className="label">Scoring Mode</label>
+                          <div className="mode-toggle">
+                            <button
+                              className={`mode-btn ${mode === "mood_priority" ? "mode-btn--active" : ""}`}
+                              onClick={() => setMode("mood_priority")}
+                            >
+                              Mood Priority
+                            </button>
+                            <button
+                              className={`mode-btn ${mode === "genre_priority" ? "mode-btn--active" : ""}`}
+                              onClick={() => setMode("genre_priority")}
+                            >
+                              Genre Priority
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        className="cta"
+                        onClick={handleRecommend}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Find My Vibe
+                      </motion.button>
+                    </motion.section>
+
+                    <AnimatePresence mode="wait">
+                      {results && (
+                        <motion.section
+                          ref={resultsRef}
+                          className="results-section"
+                          key={JSON.stringify(results.map((r) => r.song.id))}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.4 }}
+                        >
+                          <h2 className="section-title">Top 5 Recommendations</h2>
+                          <p className="results-hint">
+                            Click a card to see the scoring breakdown
+                          </p>
+                          <div className="card-list">
+                            {results.map((entry, i) => (
+                              <SongCard
+                                key={entry.song.id}
+                                entry={entry}
+                                index={i}
+                                isSaved={playlistIds.includes(entry.song.id)}
+                                onToggleSave={toggleSave}
+                              />
+                            ))}
+                          </div>
+                        </motion.section>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="rec-discover"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <DiscoverView
+                      playlistSongs={playlistSongs}
+                      playlistIds={playlistIds}
+                      onToggleSave={toggleSave}
+                      onSaveDiscoveredSong={saveDiscoveredSong}
+                    />
+                  </motion.div>
                 )}
               </AnimatePresence>
             </motion.div>
