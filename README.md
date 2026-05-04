@@ -220,3 +220,9 @@ The packet is written to [planning/external-agent/packet.generated.md](planning/
 
 - [model_card.md](model_card.md)
 - [reflection.md](reflection.md)
+
+---
+
+## Demo Video
+
+[Watch on Loom](https://www.loom.com/share/3b40892e890d4e6cadc9714284358ad9)
