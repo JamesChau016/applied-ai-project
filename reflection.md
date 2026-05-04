@@ -90,3 +90,10 @@ So "Gym Hero" scores ~2.75 points. The problem is that it still beats out many o
 For users wanting sad + high-energy music (the conflicting profile), "Gym Hero" actually ranks #1—not because it's sad, but because no truly sad songs exist at that energy level, so the system picks the best available match, which is a pop song with the right energy.
 
 **The lesson:** Recommender systems can't always satisfy all preferences at once. When you want an impossible combination (sad + maximum energy), the system has to compromise, and you get recommendations that feel off-theme.
+
+
+### Reflection and Ethics: Thinking Critically About Your AI
+
+- The AI gave many insightful responses that helped me build my project in a faster rate than I've built ever before. However, there are many instances that it misunderstood my requests or couldn't identify the core problem, prompting me to redo or research myself.
+- My system still has many flaws and limitations mainly due to the lack of resources (using free API tiers).
+- What surprised me the most was the AI's capability to run command lines and constantly adapt with my laptop's configurations.
