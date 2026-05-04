@@ -3,8 +3,6 @@
  * Port of src/audiodb_client.py — fetches and normalizes tracks.
  */
 
-import { GENRES, MOODS } from "./recommender.js";
-
 const BASE_URL = "https://www.theaudiodb.com/api/v1/json/123";
 
 let lastRequestTime = 0;
@@ -92,24 +90,152 @@ const MOOD_MAP = {
 // ── Heuristic defaults for numeric features by genre ──
 
 const GENRE_DEFAULTS = {
-  rock:             { energy: 0.72, acousticness: 0.20, valence: 0.55, danceability: 0.50, instrumentalness: 0.10, production_complexity: 0.70, lyrical_sentiment: 0.0 },
-  "alternative rock":{ energy: 0.65, acousticness: 0.25, valence: 0.45, danceability: 0.45, instrumentalness: 0.12, production_complexity: 0.65, lyrical_sentiment: -0.1 },
-  "indie rock":     { energy: 0.60, acousticness: 0.35, valence: 0.50, danceability: 0.45, instrumentalness: 0.10, production_complexity: 0.55, lyrical_sentiment: -0.05 },
-  "indie pop":      { energy: 0.55, acousticness: 0.40, valence: 0.60, danceability: 0.55, instrumentalness: 0.08, production_complexity: 0.50, lyrical_sentiment: 0.15 },
-  pop:              { energy: 0.70, acousticness: 0.20, valence: 0.65, danceability: 0.70, instrumentalness: 0.05, production_complexity: 0.65, lyrical_sentiment: 0.3 },
-  "synth-pop":      { energy: 0.75, acousticness: 0.10, valence: 0.60, danceability: 0.72, instrumentalness: 0.15, production_complexity: 0.75, lyrical_sentiment: 0.2 },
-  synthwave:        { energy: 0.70, acousticness: 0.08, valence: 0.55, danceability: 0.65, instrumentalness: 0.30, production_complexity: 0.80, lyrical_sentiment: 0.1 },
-  metal:            { energy: 0.92, acousticness: 0.05, valence: 0.30, danceability: 0.35, instrumentalness: 0.20, production_complexity: 0.85, lyrical_sentiment: -0.35 },
-  jazz:             { energy: 0.40, acousticness: 0.70, valence: 0.50, danceability: 0.45, instrumentalness: 0.40, production_complexity: 0.70, lyrical_sentiment: 0.05 },
-  funk:             { energy: 0.75, acousticness: 0.25, valence: 0.70, danceability: 0.80, instrumentalness: 0.15, production_complexity: 0.65, lyrical_sentiment: 0.2 },
-  disco:            { energy: 0.80, acousticness: 0.15, valence: 0.75, danceability: 0.85, instrumentalness: 0.10, production_complexity: 0.60, lyrical_sentiment: 0.3 },
-  lofi:             { energy: 0.35, acousticness: 0.55, valence: 0.40, danceability: 0.40, instrumentalness: 0.50, production_complexity: 0.40, lyrical_sentiment: 0.0 },
-  ambient:          { energy: 0.25, acousticness: 0.60, valence: 0.40, danceability: 0.20, instrumentalness: 0.70, production_complexity: 0.55, lyrical_sentiment: 0.0 },
-  classical:        { energy: 0.30, acousticness: 0.90, valence: 0.45, danceability: 0.15, instrumentalness: 0.85, production_complexity: 0.80, lyrical_sentiment: 0.0 },
-  reggae:           { energy: 0.55, acousticness: 0.35, valence: 0.65, danceability: 0.70, instrumentalness: 0.10, production_complexity: 0.45, lyrical_sentiment: 0.15 },
+  rock: {
+    energy: 0.72,
+    acousticness: 0.2,
+    valence: 0.55,
+    danceability: 0.5,
+    instrumentalness: 0.1,
+    production_complexity: 0.7,
+    lyrical_sentiment: 0.0,
+  },
+  "alternative rock": {
+    energy: 0.65,
+    acousticness: 0.25,
+    valence: 0.45,
+    danceability: 0.45,
+    instrumentalness: 0.12,
+    production_complexity: 0.65,
+    lyrical_sentiment: -0.1,
+  },
+  "indie rock": {
+    energy: 0.6,
+    acousticness: 0.35,
+    valence: 0.5,
+    danceability: 0.45,
+    instrumentalness: 0.1,
+    production_complexity: 0.55,
+    lyrical_sentiment: -0.05,
+  },
+  "indie pop": {
+    energy: 0.55,
+    acousticness: 0.4,
+    valence: 0.6,
+    danceability: 0.55,
+    instrumentalness: 0.08,
+    production_complexity: 0.5,
+    lyrical_sentiment: 0.15,
+  },
+  pop: {
+    energy: 0.7,
+    acousticness: 0.2,
+    valence: 0.65,
+    danceability: 0.7,
+    instrumentalness: 0.05,
+    production_complexity: 0.65,
+    lyrical_sentiment: 0.3,
+  },
+  "synth-pop": {
+    energy: 0.75,
+    acousticness: 0.1,
+    valence: 0.6,
+    danceability: 0.72,
+    instrumentalness: 0.15,
+    production_complexity: 0.75,
+    lyrical_sentiment: 0.2,
+  },
+  synthwave: {
+    energy: 0.7,
+    acousticness: 0.08,
+    valence: 0.55,
+    danceability: 0.65,
+    instrumentalness: 0.3,
+    production_complexity: 0.8,
+    lyrical_sentiment: 0.1,
+  },
+  metal: {
+    energy: 0.92,
+    acousticness: 0.05,
+    valence: 0.3,
+    danceability: 0.35,
+    instrumentalness: 0.2,
+    production_complexity: 0.85,
+    lyrical_sentiment: -0.35,
+  },
+  jazz: {
+    energy: 0.4,
+    acousticness: 0.7,
+    valence: 0.5,
+    danceability: 0.45,
+    instrumentalness: 0.4,
+    production_complexity: 0.7,
+    lyrical_sentiment: 0.05,
+  },
+  funk: {
+    energy: 0.75,
+    acousticness: 0.25,
+    valence: 0.7,
+    danceability: 0.8,
+    instrumentalness: 0.15,
+    production_complexity: 0.65,
+    lyrical_sentiment: 0.2,
+  },
+  disco: {
+    energy: 0.8,
+    acousticness: 0.15,
+    valence: 0.75,
+    danceability: 0.85,
+    instrumentalness: 0.1,
+    production_complexity: 0.6,
+    lyrical_sentiment: 0.3,
+  },
+  lofi: {
+    energy: 0.35,
+    acousticness: 0.55,
+    valence: 0.4,
+    danceability: 0.4,
+    instrumentalness: 0.5,
+    production_complexity: 0.4,
+    lyrical_sentiment: 0.0,
+  },
+  ambient: {
+    energy: 0.25,
+    acousticness: 0.6,
+    valence: 0.4,
+    danceability: 0.2,
+    instrumentalness: 0.7,
+    production_complexity: 0.55,
+    lyrical_sentiment: 0.0,
+  },
+  classical: {
+    energy: 0.3,
+    acousticness: 0.9,
+    valence: 0.45,
+    danceability: 0.15,
+    instrumentalness: 0.85,
+    production_complexity: 0.8,
+    lyrical_sentiment: 0.0,
+  },
+  reggae: {
+    energy: 0.55,
+    acousticness: 0.35,
+    valence: 0.65,
+    danceability: 0.7,
+    instrumentalness: 0.1,
+    production_complexity: 0.45,
+    lyrical_sentiment: 0.15,
+  },
 };
 
-const DEFAULT_FEATURES = { energy: 0.55, acousticness: 0.30, valence: 0.50, danceability: 0.50, instrumentalness: 0.15, production_complexity: 0.60, lyrical_sentiment: 0.0 };
+const DEFAULT_FEATURES = {
+  energy: 0.55,
+  acousticness: 0.3,
+  valence: 0.5,
+  danceability: 0.5,
+  instrumentalness: 0.15,
+  production_complexity: 0.6,
+  lyrical_sentiment: 0.0,
+};
 
 function mapGenre(raw) {
   if (!raw) return null;
@@ -148,12 +274,11 @@ function safeInt(val) {
   return isNaN(n) ? 0 : n;
 }
 
-function safeFloat(val) {
-  const n = parseFloat(val);
-  return isNaN(n) ? 0 : n;
-}
-
-export function normalizeTrack(raw, fallbackGenre = "pop", fallbackMood = "chill") {
+export function normalizeTrack(
+  raw,
+  fallbackGenre = "pop",
+  fallbackMood = "chill",
+) {
   const genre = mapGenre(raw.strGenre) || fallbackGenre;
   const mood = mapMood(raw.strMood) || fallbackMood;
   const defaults = GENRE_DEFAULTS[genre] || DEFAULT_FEATURES;
@@ -183,7 +308,9 @@ export function normalizeTrack(raw, fallbackGenre = "pop", fallbackMood = "chill
 
 export async function getTopTracks(artistName, fallbackGenre, fallbackMood) {
   const encoded = encodeURIComponent(artistName);
-  const data = await rateLimitedFetch(`${BASE_URL}/track-top10.php?s=${encoded}`);
+  const data = await rateLimitedFetch(
+    `${BASE_URL}/track-top10.php?s=${encoded}`,
+  );
   if (!data || !data.track) return [];
   return data.track.map((t) => normalizeTrack(t, fallbackGenre, fallbackMood));
 }
@@ -191,21 +318,26 @@ export async function getTopTracks(artistName, fallbackGenre, fallbackMood) {
 // Well-known artists by genre — used as fallback when playlist artists are
 // fictional or return no results from AudioDB.
 const GENRE_ARTISTS = {
-  lofi:              ["Nujabes", "J Dilla", "Tomppabeats", "Idealism"],
-  ambient:           ["Brian Eno", "Tycho", "Boards of Canada", "Aphex Twin"],
-  "indie rock":      ["Arctic Monkeys", "Tame Impala", "Radiohead", "The Strokes"],
-  "indie pop":       ["Clairo", "Alvvays", "Mac DeMarco", "Beach House"],
-  "synth-pop":       ["The Weeknd", "Depeche Mode", "CHVRCHES", "M83"],
-  synthwave:         ["The Midnight", "FM-84", "Gunship", "Kavinsky"],
-  pop:               ["Dua Lipa", "Harry Styles", "Taylor Swift", "Billie Eilish"],
-  rock:              ["Foo Fighters", "Muse", "Queens of the Stone Age", "Led Zeppelin"],
-  "alternative rock":["Radiohead", "Pixies", "The Smashing Pumpkins", "Nirvana"],
-  metal:             ["Metallica", "Tool", "Gojira", "Mastodon"],
-  jazz:              ["Miles Davis", "John Coltrane", "Kamasi Washington", "Robert Glasper"],
-  funk:              ["Vulfpeck", "Jamiroquai", "Earth Wind and Fire", "Prince"],
-  disco:             ["Daft Punk", "Bee Gees", "Donna Summer", "Chic"],
-  classical:         ["Ludovico Einaudi", "Max Richter", "Olafur Arnalds", "Yiruma"],
-  reggae:            ["Bob Marley", "Chronixx", "Protoje", "Damian Marley"],
+  lofi: ["Nujabes", "J Dilla", "Tomppabeats", "Idealism"],
+  ambient: ["Brian Eno", "Tycho", "Boards of Canada", "Aphex Twin"],
+  "indie rock": ["Arctic Monkeys", "Tame Impala", "Radiohead", "The Strokes"],
+  "indie pop": ["Clairo", "Alvvays", "Mac DeMarco", "Beach House"],
+  "synth-pop": ["The Weeknd", "Depeche Mode", "CHVRCHES", "M83"],
+  synthwave: ["The Midnight", "FM-84", "Gunship", "Kavinsky"],
+  pop: ["Dua Lipa", "Harry Styles", "Taylor Swift", "Billie Eilish"],
+  rock: ["Foo Fighters", "Muse", "Queens of the Stone Age", "Led Zeppelin"],
+  "alternative rock": [
+    "Radiohead",
+    "Pixies",
+    "The Smashing Pumpkins",
+    "Nirvana",
+  ],
+  metal: ["Metallica", "Tool", "Gojira", "Mastodon"],
+  jazz: ["Miles Davis", "John Coltrane", "Kamasi Washington", "Robert Glasper"],
+  funk: ["Vulfpeck", "Jamiroquai", "Earth Wind and Fire", "Prince"],
+  disco: ["Daft Punk", "Bee Gees", "Donna Summer", "Chic"],
+  classical: ["Ludovico Einaudi", "Max Richter", "Olafur Arnalds", "Yiruma"],
+  reggae: ["Bob Marley", "Chronixx", "Protoje", "Damian Marley"],
 };
 
 export function getFallbackArtists(genre, exclude) {

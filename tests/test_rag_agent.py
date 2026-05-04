@@ -1,6 +1,5 @@
 """Tests for the RAG recommendation agent."""
 
-import json
 import numpy as np
 from unittest.mock import MagicMock, patch
 from src.rag_agent import (
@@ -11,11 +10,10 @@ from src.rag_agent import (
     _song_to_text,
     _profile_to_text,
     _generate_reason,
-    _load_json,
 )
 
 
-PLAYLIST_PATH = "data/playlist.json"
+PLAYLIST_PATH = "tests/fixtures/playlist.json"
 SONGS_CSV_PATH = "data/songs.csv"
 
 
