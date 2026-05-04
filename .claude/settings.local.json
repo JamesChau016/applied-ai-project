@@ -5,7 +5,17 @@
       "Bash(npm install:*)",
       "Bash(npx vite:*)",
       "Bash(python -m pytest -q)",
-      "WebFetch(domain:www.theaudiodb.com)"
+      "WebFetch(domain:www.theaudiodb.com)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python:*)",
+      "Bash(pkill -f \"python.*api.py\")",
+      "Bash(pkill -f \"flask\")",
+      "Bash(python -m src.api)",
+      "Bash(echo \"Server starting... PID: $!\")",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(taskkill:*)",
+      "Bash(rm -rf C:/datacloak/Huy/applied-ai-project/src/__pycache__)",
+      "Bash(curl -s -X POST http://localhost:5000/api/discover -H 'Content-Type: application/json' -d '{:*)"
     ]
   }
 }

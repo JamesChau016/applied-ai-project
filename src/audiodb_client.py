@@ -97,22 +97,28 @@ def _safe_float(val) -> float:
 
 # Well-known artists by genre — used to broaden discovery beyond the user's
 # playlist artists so we surface songs the user hasn't heard before.
+# NOTE: TheAudioDB free tier returns only 1 track per artist, so we need
+# a large pool to build a meaningful candidate set.
 GENRE_ARTISTS = {
-    "lofi":              ["Nujabes", "J Dilla", "Tomppabeats", "Idealism"],
-    "ambient":           ["Brian Eno", "Tycho", "Boards of Canada", "Aphex Twin"],
-    "indie rock":        ["Arctic Monkeys", "Tame Impala", "Radiohead", "The Strokes"],
-    "indie pop":         ["Clairo", "Alvvays", "Mac DeMarco", "Beach House"],
-    "synth-pop":         ["The Weeknd", "Depeche Mode", "CHVRCHES", "M83"],
-    "synthwave":         ["The Midnight", "FM-84", "Gunship", "Kavinsky"],
-    "pop":               ["Dua Lipa", "Harry Styles", "Taylor Swift", "Billie Eilish"],
-    "rock":              ["Foo Fighters", "Muse", "Queens of the Stone Age", "Led Zeppelin"],
-    "alternative rock":  ["Radiohead", "Pixies", "The Smashing Pumpkins", "Nirvana"],
-    "metal":             ["Metallica", "Tool", "Gojira", "Mastodon"],
-    "jazz":              ["Miles Davis", "John Coltrane", "Kamasi Washington", "Robert Glasper"],
-    "funk":              ["Vulfpeck", "Jamiroquai", "Earth Wind and Fire", "Prince"],
-    "disco":             ["Daft Punk", "Bee Gees", "Donna Summer", "Chic"],
-    "classical":         ["Ludovico Einaudi", "Max Richter", "Olafur Arnalds", "Yiruma"],
-    "reggae":            ["Bob Marley", "Chronixx", "Protoje", "Damian Marley"],
+    "lofi":              ["Nujabes", "J Dilla", "Tomppabeats", "Idealism", "Jinsang", "Kina", "Saib", "DJ Okawari"],
+    "ambient":           ["Brian Eno", "Tycho", "Boards of Canada", "Aphex Twin", "Nils Frahm", "Jon Hopkins", "Bonobo", "Sigur Ros"],
+    "indie rock":        ["Arctic Monkeys", "Tame Impala", "Radiohead", "The Strokes", "Interpol", "Bloc Party", "Franz Ferdinand", "The Killers", "Vampire Weekend", "Cage the Elephant"],
+    "indie pop":         ["Clairo", "Alvvays", "Mac DeMarco", "Beach House", "Phoebe Bridgers", "Snail Mail", "Japanese Breakfast", "Mitski", "girl in red", "Rex Orange County"],
+    "synth-pop":         ["The Weeknd", "Depeche Mode", "CHVRCHES", "M83", "Pet Shop Boys", "New Order", "Tears for Fears", "A-ha", "Robyn", "Grimes"],
+    "synthwave":         ["The Midnight", "FM-84", "Gunship", "Kavinsky", "Perturbator", "Carpenter Brut", "Com Truise", "Timecop1983"],
+    "pop":               ["Dua Lipa", "Harry Styles", "Taylor Swift", "Billie Eilish", "Ariana Grande", "Ed Sheeran", "The Chainsmokers", "Sia", "Lorde", "Khalid", "Rihanna", "Justin Bieber", "Bruno Mars", "Adele", "Lady Gaga"],
+    "rock":              ["Foo Fighters", "Muse", "Queens of the Stone Age", "Led Zeppelin", "Red Hot Chili Peppers", "Green Day", "Weezer", "Pearl Jam", "The Black Keys", "Royal Blood"],
+    "alternative rock":  ["Radiohead", "Pixies", "The Smashing Pumpkins", "Nirvana", "Beck", "Placebo", "The Cure", "Joy Division", "Sonic Youth", "Modest Mouse"],
+    "metal":             ["Metallica", "Tool", "Gojira", "Mastodon", "Slipknot", "Deftones", "System of a Down", "Iron Maiden"],
+    "jazz":              ["Miles Davis", "John Coltrane", "Kamasi Washington", "Robert Glasper", "Herbie Hancock", "Thelonious Monk", "Bill Evans", "Esperanza Spalding"],
+    "funk":              ["Vulfpeck", "Jamiroquai", "Earth Wind and Fire", "Prince", "Parliament", "Stevie Wonder", "James Brown", "Sly and the Family Stone", "Kool and the Gang", "Rick James"],
+    "disco":             ["Daft Punk", "Bee Gees", "Donna Summer", "Chic", "Gloria Gaynor", "KC and the Sunshine Band", "ABBA", "Nile Rodgers"],
+    "classical":         ["Ludovico Einaudi", "Max Richter", "Olafur Arnalds", "Yiruma", "Hans Zimmer", "Ennio Morricone", "Philip Glass", "Debussy"],
+    "r&b":               ["Frank Ocean", "SZA", "Daniel Caesar", "H.E.R.", "Jhene Aiko", "Alicia Keys", "Erykah Badu", "Usher", "Chris Brown", "Beyonce"],
+    "hip-hop":           ["Kendrick Lamar", "J. Cole", "Drake", "Tyler the Creator", "Kanye West", "Travis Scott", "Mac Miller", "A$AP Rocky"],
+    "electronic":        ["Disclosure", "Flume", "ODESZA", "Caribou", "Four Tet", "Jamie xx", "Kaytranada", "Rufus Du Sol"],
+    "soul":              ["Marvin Gaye", "Aretha Franklin", "Al Green", "Otis Redding", "Sam Cooke", "Amy Winehouse", "Leon Bridges", "Anderson .Paak"],
+    "reggae":            ["Bob Marley", "Chronixx", "Protoje", "Damian Marley", "Toots and the Maytals", "Peter Tosh", "Steel Pulse", "UB40"],
 }
 
 
@@ -121,3 +127,40 @@ def get_genre_artists(genre: str, exclude: set = None) -> List[str]:
     exclude = exclude or set()
     pool = GENRE_ARTISTS.get(genre, GENRE_ARTISTS.get("pop", []))
     return [a for a in pool if a not in exclude]
+
+
+def _all_known_artists() -> List[str]:
+    """Flat list of every artist in GENRE_ARTISTS (cached)."""
+    if not hasattr(_all_known_artists, "_cache"):
+        seen = set()
+        result = []
+        for artists in GENRE_ARTISTS.values():
+            for a in artists:
+                if a not in seen:
+                    seen.add(a)
+                    result.append(a)
+        _all_known_artists._cache = result
+    return _all_known_artists._cache
+
+
+def resolve_artist_name(name: str) -> str:
+    """Try to correct a misspelled artist name using fuzzy matching.
+
+    Checks against all known artists in GENRE_ARTISTS first, then falls
+    back to case-insensitive comparison.  Returns the corrected name if
+    a close match is found, otherwise returns the original name unchanged.
+    """
+    from difflib import get_close_matches
+
+    known = _all_known_artists()
+    # Exact match (case-insensitive) — no correction needed
+    name_lower = name.lower()
+    for artist in known:
+        if artist.lower() == name_lower:
+            return artist
+
+    matches = get_close_matches(name, known, n=1, cutoff=0.7)
+    if matches:
+        print(f"  [Artist correction] \"{name}\" -> \"{matches[0]}\"")
+        return matches[0]
+    return name

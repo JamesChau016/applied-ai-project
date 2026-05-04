@@ -33,18 +33,28 @@ def _get_recommender() -> RAGRecommender:
 def discover():
     """Discover new songs using the RAG agent.
 
-    Expects JSON body: { "playlist": [ { title, artist, genre, ... }, ... ] }
+    Expects JSON body: { "playlist": [ { title, artist, genre, ... }, ... ], "preferences": { ... } }
     Returns JSON:      { "recommendations": [...], "overall_explanation": "..." }
     """
     body = request.get_json(silent=True) or {}
     playlist = body.get("playlist", [])
+    preferences = body.get("preferences")
 
     if not playlist:
         return jsonify({"error": "playlist is required and must be non-empty"}), 400
 
     k = body.get("k", 10)
     recommender = _get_recommender()
-    result = recommender.discover(playlist, k=k)
+    result = recommender.discover(playlist, k=k, preferences=preferences)
+
+    print("\n[API] === DISCOVER RESULTS ===")
+    for i, rec in enumerate(result.get("recommendations", []), 1):
+        print(f"  {i}. \"{rec.get('title')}\" by {rec.get('artist')} "
+              f"[genre={rec.get('genre')}, mood={rec.get('mood')}, "
+              f"sim={rec.get('similarity')}, source={rec.get('source')}]")
+    print(f"  Explanation: {result.get('overall_explanation', '')}")
+    print("[API] === END RESULTS ===\n")
+
     return jsonify(result)
 
 
@@ -89,4 +99,4 @@ def health():
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True, use_reloader=False)
+    app.run(port=5000, debug=False)

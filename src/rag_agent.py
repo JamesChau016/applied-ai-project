@@ -10,10 +10,10 @@ from collections import Counter
 from typing import Dict, List, Optional
 
 try:
-    from .audiodb_client import AudioDBClient, get_genre_artists
+    from .audiodb_client import AudioDBClient, get_genre_artists, resolve_artist_name
     from .recommender import load_songs
 except ImportError:
-    from audiodb_client import AudioDBClient, get_genre_artists
+    from audiodb_client import AudioDBClient, get_genre_artists, resolve_artist_name
     from recommender import load_songs
 
 
@@ -73,23 +73,36 @@ class SongRetriever:
         self.songs_csv_path = songs_csv_path
 
     def retrieve(self, profile: dict, favorite_ids: set,
-                  include_local: bool = True) -> List[dict]:
+                  include_local: bool = True,
+                  pref_artists: list | None = None,
+                  max_artists: int = 10) -> List[dict]:
         """Fetch candidate songs based on user profile.
 
-        Combines TheAudioDB top tracks for favorite artists AND genre-related
-        artists with the local catalog.  Excludes songs already in the user's
-        favorites.
+        When pref_artists is given, only those artists are fetched.
+        Otherwise, fetches playlist artists + genre-related artists up
+        to max_artists total.
         """
         candidates = []
         seen_keys = set()
         tried_artists = set()
+        fetch_count = 0
 
-        def _fetch_artist(artist: str) -> int:
-            if artist in tried_artists:
+        def _fetch_artist(artist: str, allow_correction: bool = True) -> int:
+            nonlocal fetch_count
+            if artist in tried_artists or fetch_count >= max_artists:
                 return 0
             tried_artists.add(artist)
+            fetch_count += 1
             print(f"  Fetching tracks for '{artist}' from TheAudioDB...")
             tracks = self.audiodb.get_top_tracks(artist)
+
+            # If no results and name might be misspelled, try fuzzy correction
+            if not tracks and allow_correction:
+                corrected = resolve_artist_name(artist)
+                if corrected != artist and corrected not in tried_artists:
+                    tried_artists.add(corrected)
+                    tracks = self.audiodb.get_top_tracks(corrected)
+
             added = 0
             for track in tracks:
                 key = (track["title"].lower(), track["artist"].lower())
@@ -99,16 +112,26 @@ class SongRetriever:
                     added += 1
             return added
 
-        # 1. Fetch top tracks for each favorite artist
-        for artist in profile.get("artists", []):
-            _fetch_artist(artist)
-
-        # 2. Broaden search: fetch genre-related artists so results aren't
-        #    limited to the user's existing favorites.
-        for genre in profile.get("genres", []):
-            related = get_genre_artists(genre, exclude=tried_artists)
-            for artist in related:
+        if pref_artists:
+            # Only fetch the user's explicitly preferred artists
+            for artist in pref_artists:
                 _fetch_artist(artist)
+        else:
+            # 1. Fetch top tracks for each playlist artist
+            for artist in profile.get("artists", []):
+                if fetch_count >= max_artists:
+                    break
+                _fetch_artist(artist)
+
+            # 2. Broaden with genre-related artists up to the cap
+            for genre in profile.get("genres", []):
+                if fetch_count >= max_artists:
+                    break
+                related = get_genre_artists(genre, exclude=tried_artists)
+                for artist in related:
+                    if fetch_count >= max_artists:
+                        break
+                    _fetch_artist(artist)
 
         # 3. Add local catalog songs not already in favorites
         if include_local:
@@ -155,9 +178,20 @@ def _profile_to_text(profile: dict, user_query: str = "") -> str:
         parts.append(f"moods: {', '.join(profile['moods'])}")
     if profile.get("likes_acoustic"):
         parts.append("acoustic")
-    energy = profile.get("avg_energy", 0.5)
-    energy_label = "low energy" if energy < 0.4 else "medium energy" if energy < 0.7 else "high energy"
-    parts.append(energy_label)
+    if profile.get("energy_min") is not None and profile.get("energy_max") is not None:
+        parts.append(
+            f"energy range {profile['energy_min']:.2f}-{profile['energy_max']:.2f}"
+        )
+    else:
+        energy = profile.get("avg_energy", 0.5)
+        energy_label = (
+            "low energy" if energy < 0.4 else "medium energy" if energy < 0.7 else "high energy"
+        )
+        parts.append(energy_label)
+    if profile.get("popularity_min") is not None and profile.get("popularity_max") is not None:
+        parts.append(
+            f"popularity range {profile['popularity_min']:.0f}-{profile['popularity_max']:.0f}"
+        )
     return ", ".join(parts)
 
 
@@ -293,7 +327,7 @@ class RAGRecommender:
         }
 
 
-    def discover(self, playlist: List[dict], k: int = 10) -> dict:
+    def discover(self, playlist: List[dict], k: int = 10, preferences: Optional[dict] = None) -> dict:
         """Discover new songs NOT in the local 20-song catalog.
 
         Accepts the user's current playlist directly (from the frontend) rather
@@ -304,26 +338,68 @@ class RAGRecommender:
         if not playlist:
             return {"recommendations": [], "overall_explanation": "Playlist is empty."}
 
+        preferences = preferences or {}
+
         # Build profile from the supplied playlist
         artists = list({s["artist"] for s in playlist if "artist" in s})
         genres = [s["genre"] for s in playlist if "genre" in s]
         moods = [s["mood"] for s in playlist if "mood" in s]
         genre_counts = Counter(genres)
         mood_counts = Counter(moods)
+        playlist_top_genres = [g for g, _ in genre_counts.most_common(3)]
+        playlist_top_moods = [m for m, _ in mood_counts.most_common(3)]
+
+        pref_artists = [resolve_artist_name(a) for a in _normalize_list(preferences.get("artists"))]
+        pref_genres = _normalize_list(preferences.get("genres"))
+        pref_moods = _normalize_list(preferences.get("moods"))
+
+        if pref_artists:
+            artists = _merge_unique(pref_artists, artists)
+        if pref_genres:
+            genres = _merge_unique(pref_genres, genres)
+        if pref_moods:
+            moods = _merge_unique(pref_moods, moods)
+
+        profile_genres = _merge_unique(pref_genres, playlist_top_genres, limit=6)
+        profile_moods = _merge_unique(pref_moods, playlist_top_moods, limit=6)
 
         profile = {
             "artists": artists,
-            "genres": [g for g, _ in genre_counts.most_common(3)],
-            "moods": [m for m, _ in mood_counts.most_common(3)],
+            "genres": profile_genres,
+            "moods": profile_moods,
             "avg_energy": _avg([s.get("energy", 0.5) for s in playlist]),
             "likes_acoustic": _avg([s.get("acousticness", 0.5) for s in playlist]) > 0.5,
         }
+
+        energy_min = _coerce_float(preferences.get("energy_min"))
+        energy_max = _coerce_float(preferences.get("energy_max"))
+        if energy_min is not None or energy_max is not None:
+            energy_min = 0.0 if energy_min is None else max(0.0, min(1.0, energy_min))
+            energy_max = 1.0 if energy_max is None else max(0.0, min(1.0, energy_max))
+            if energy_min > energy_max:
+                energy_min, energy_max = energy_max, energy_min
+            profile["energy_min"] = energy_min
+            profile["energy_max"] = energy_max
+            profile["avg_energy"] = (energy_min + energy_max) / 2
+
+        popularity_min = _coerce_float(preferences.get("popularity_min"))
+        popularity_max = _coerce_float(preferences.get("popularity_max"))
+        if popularity_min is not None or popularity_max is not None:
+            popularity_min = 0.0 if popularity_min is None else max(0.0, min(100.0, popularity_min))
+            popularity_max = 100.0 if popularity_max is None else max(0.0, min(100.0, popularity_max))
+            if popularity_min > popularity_max:
+                popularity_min, popularity_max = popularity_max, popularity_min
+            profile["popularity_min"] = popularity_min
+            profile["popularity_max"] = popularity_max
 
         print("\n[RAG Agent – Discover] Profile:", profile)
 
         # Retrieve candidates — skip local catalog songs entirely
         favorite_ids = {s["id"] for s in playlist if "id" in s}
-        candidates = self.retriever.retrieve(profile, favorite_ids, include_local=False)
+        candidates = self.retriever.retrieve(
+            profile, favorite_ids, include_local=False,
+            pref_artists=pref_artists or None,
+        )
 
         # Also exclude anything that's in the local 20-song catalog by (title, artist)
         local_songs = load_songs(self.songs_csv_path)
@@ -333,11 +409,36 @@ class RAGRecommender:
             if (c["title"].lower(), c["artist"].lower()) not in local_keys
         ]
 
+        preferences_relaxed = False
+        if pref_genres or pref_moods or pref_artists:
+            filtered_candidates = [
+                c
+                for c in candidates
+                if _candidate_matches_preferences(
+                    c,
+                    pref_genres,
+                    pref_moods,
+                    pref_artists,
+                    energy_min,
+                    energy_max,
+                    popularity_min,
+                    popularity_max,
+                )
+            ]
+            if filtered_candidates and len(filtered_candidates) >= k:
+                candidates = filtered_candidates
+            elif filtered_candidates:
+                preferences_relaxed = True
+            else:
+                preferences_relaxed = True
+
         if not candidates:
             return {
                 "recommendations": [],
                 "overall_explanation": "No external songs found. Try adding more songs to your playlist.",
             }
+
+        _hydrate_candidate_popularity(candidates)
 
         # Embed & rank
         print(f"\n[RAG Agent – Discover] Ranking {len(candidates)} candidates...")
@@ -352,19 +453,60 @@ class RAGRecommender:
         candidate_embeddings = embeddings[1:]
         scores = self.embedding_model.similarity(query_embedding, candidate_embeddings)
 
-        scored = list(zip(candidates, scores))
+        pref_genre_set = {g.lower() for g in pref_genres}
+        pref_mood_set = {m.lower() for m in pref_moods}
+        pref_artist_set = {a.lower() for a in pref_artists}
+
+        def _preference_boost(song: dict) -> float:
+            boost = 0.0
+            song_genre = (song.get("genre") or "").lower()
+            song_mood = (song.get("mood") or "").lower()
+            song_artist = (song.get("artist") or "").lower()
+
+            if pref_genre_set and _matches_any(song_genre, pref_genre_set):
+                boost += 0.12
+            if pref_mood_set and _matches_any(song_mood, pref_mood_set):
+                boost += 0.08
+            if pref_artist_set and song_artist in pref_artist_set:
+                boost += 0.25
+            return boost
+
+        scored = [
+            (song, score + _preference_boost(song)) for song, score in zip(candidates, scores)
+        ]
         scored.sort(key=lambda x: x[1], reverse=True)
 
-        # Artist diversity — max 3 songs per artist
+        # Build top-k with artist diversity (max 3 songs per artist)
         artist_count: Dict[str, int] = {}
         top_k = []
+        seen_keys = set()
+
+        def _add(song, score) -> bool:
+            key = (song.get("title", "").lower(), song.get("artist", "").lower())
+            if key in seen_keys:
+                return False
+            a = song.get("artist", "")
+            if artist_count.get(a, 0) >= 3:
+                return False
+            seen_keys.add(key)
+            artist_count[a] = artist_count.get(a, 0) + 1
+            top_k.append((song, score))
+            return True
+
+        # Seed with top match for each preferred artist
+        if pref_artists:
+            for artist in pref_artists:
+                artist_lower = artist.lower()
+                for song, score in scored:
+                    if song.get("artist", "").lower() == artist_lower:
+                        _add(song, score)
+                        break
+
+        # Fill remaining slots from ranked list
         for song, score in scored:
             if len(top_k) >= k:
                 break
-            a = song.get("artist", "")
-            if artist_count.get(a, 0) < 3:
-                artist_count[a] = artist_count.get(a, 0) + 1
-                top_k.append((song, score))
+            _add(song, score)
 
         recommendations = []
         for song, score in top_k:
@@ -382,13 +524,23 @@ class RAGRecommender:
             }
             recommendations.append(rec)
 
+        preference_note = ""
+        if pref_genres or pref_moods or pref_artists:
+            if preferences_relaxed:
+                preference_note = (
+                    " Preferences were relaxed because no candidates matched; "
+                    "ranking still favors your selections."
+                )
+            else:
+                preference_note = " Preferences were applied during retrieval and ranking."
+
         return {
             "recommendations": recommendations,
             "overall_explanation": (
                 f"Discovered {len(recommendations)} songs from {len(artist_count)} artists. "
                 f"Ranked {len(candidates)} AudioDB candidates by semantic similarity to your "
                 f"taste profile ({', '.join(profile['genres'])}, {', '.join(profile['moods'])}) "
-                f"using all-MiniLM-L6-v2 embeddings."
+                f"using all-MiniLM-L6-v2 embeddings.{preference_note}"
             ),
         }
 
@@ -428,3 +580,146 @@ def _load_json(path: str) -> list:
 def _avg(values: list) -> float:
     """Compute average of a list, returning 0.0 for empty lists."""
     return sum(values) / len(values) if values else 0.0
+
+
+def _normalize_list(value) -> list:
+    """Normalize string/list values into a clean list of strings."""
+    if not value:
+        return []
+    if isinstance(value, str):
+        parts = value.split(",")
+    elif isinstance(value, list):
+        parts = value
+    else:
+        return []
+    return [str(item).strip() for item in parts if str(item).strip()]
+
+
+def _coerce_float(value) -> float | None:
+    """Best-effort float coercion."""
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _merge_unique(primary: list, secondary: list, limit: int | None = None) -> list:
+    """Merge lists, keeping order and uniqueness, optionally limiting size."""
+    merged = []
+    for item in primary + secondary:
+        if item not in merged:
+            merged.append(item)
+        if limit is not None and len(merged) >= limit:
+            break
+    return merged
+
+
+def _matches_any(text: str, options: set) -> bool:
+    """Return True if text matches any option (exact or substring)."""
+    if not text:
+        return False
+    return any(option in text or text in option for option in options)
+
+
+def _hydrate_candidate_popularity(candidates: list) -> None:
+    """Attach a 0-100 popularity estimate for AudioDB tracks when missing."""
+    scores = [c.get("score") for c in candidates if isinstance(c.get("score"), (int, float))]
+    plays = [c.get("total_plays") for c in candidates if isinstance(c.get("total_plays"), int)]
+    listeners = [
+        c.get("total_listeners") for c in candidates if isinstance(c.get("total_listeners"), int)
+    ]
+    loved = [c.get("loved") for c in candidates if isinstance(c.get("loved"), int)]
+
+    score_max = max(scores) if scores else 0
+    play_max = max(plays) if plays else 0
+    listener_max = max(listeners) if listeners else 0
+    loved_max = max(loved) if loved else 0
+
+    for candidate in candidates:
+        if candidate.get("popularity") is not None:
+            continue
+        score = candidate.get("score") or 0
+        total_plays = candidate.get("total_plays") or 0
+        total_listeners = candidate.get("total_listeners") or 0
+        total_loved = candidate.get("loved") or 0
+
+        components = []
+        if score_max:
+            components.append(score / score_max)
+        if play_max:
+            components.append(total_plays / play_max)
+        if listener_max:
+            components.append(total_listeners / listener_max)
+        if loved_max:
+            components.append(total_loved / loved_max)
+
+        if components:
+            candidate["popularity"] = _clamp(round(max(components) * 100, 1), 0, 100)
+
+
+def _clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(max_value, value))
+
+
+def _candidate_matches_preferences(
+    song: dict,
+    pref_genres: list,
+    pref_moods: list,
+    pref_artists: list,
+    energy_min: float | None,
+    energy_max: float | None,
+    popularity_min: float | None,
+    popularity_max: float | None,
+) -> bool:
+    """Return True if a candidate aligns with preferences when metadata is present.
+
+    Genre, mood, and artist use OR logic — matching ANY one dimension is enough.
+    Energy and popularity use AND logic as hard numeric range filters.
+    """
+    # Energy and popularity are hard range filters (AND)
+    if energy_min is not None or energy_max is not None:
+        energy = song.get("energy")
+        if isinstance(energy, (int, float)):
+            if energy_min is not None and energy < energy_min:
+                return False
+            if energy_max is not None and energy > energy_max:
+                return False
+    if popularity_min is not None or popularity_max is not None:
+        popularity = song.get("popularity")
+        if isinstance(popularity, (int, float)):
+            if popularity_min is not None and popularity < popularity_min:
+                return False
+            if popularity_max is not None and popularity > popularity_max:
+                return False
+
+    # Genre, mood, artist use OR logic — match ANY dimension to pass
+    has_taste_prefs = bool(pref_genres or pref_moods or pref_artists)
+    if not has_taste_prefs:
+        return True
+
+    if pref_genres:
+        song_genre = (song.get("genre") or "").lower()
+        if song_genre and _matches_any(song_genre, {g.lower() for g in pref_genres}):
+            return True
+    if pref_moods:
+        song_mood = (song.get("mood") or "").lower()
+        if song_mood and _matches_any(song_mood, {m.lower() for m in pref_moods}):
+            return True
+    if pref_artists:
+        song_artist = (song.get("artist") or "").lower()
+        if song_artist and song_artist in {a.lower() for a in pref_artists}:
+            return True
+
+    # Song has metadata but didn't match any preference dimension
+    song_has_metadata = bool(
+        (song.get("genre") or "").strip()
+        or (song.get("mood") or "").strip()
+        or (song.get("artist") or "").strip()
+    )
+    if song_has_metadata:
+        return False
+
+    # No metadata to judge — let it through for embedding-based ranking
+    return True

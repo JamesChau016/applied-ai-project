@@ -72,7 +72,7 @@ function loadPlaylist() {
   } catch {
     // fall through to seed
   }
-  return seedPlaylist.map((s) => s.id);
+  return [];
 }
 
 function savePlaylist(ids) {
@@ -163,7 +163,7 @@ export default function App() {
     let active = true;
     fetchPlaylistFromApi()
       .then((playlist) => {
-        if (!active || playlist.length === 0) return;
+        if (!active) return;
         hydrateDiscoveredSongs(playlist);
         setPlaylistIds(playlist.map((song) => song.id));
       })

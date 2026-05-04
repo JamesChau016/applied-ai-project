@@ -393,7 +393,9 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   position: relative;
-  transition: background 0.25s, border-color 0.25s;
+  transition:
+    background 0.25s,
+    border-color 0.25s;
   flex-shrink: 0;
 }
 
@@ -406,7 +408,9 @@ body {
   height: 14px;
   border-radius: 50%;
   background: var(--text-muted);
-  transition: transform 0.25s, background 0.25s;
+  transition:
+    transform 0.25s,
+    background 0.25s;
 }
 
 .toggle-label input:checked + .toggle-switch {
@@ -438,7 +442,9 @@ body {
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .mode-btn + .mode-btn {
@@ -469,7 +475,9 @@ body {
 }
 
 .cta:hover {
-  box-shadow: 0 0 24px var(--amber-glow), 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 0 24px var(--amber-glow),
+    0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* ─── Results ─────────────────────────── */
@@ -565,7 +573,10 @@ body {
   justify-content: center;
   cursor: pointer;
   color: var(--text-muted);
-  transition: color 0.2s, border-color 0.2s, transform 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
 }
 
 .save-btn:hover {
@@ -902,7 +913,9 @@ body {
   height: 14px;
   background: var(--bg-elevated);
   border-radius: 1px;
-  transition: background 0.3s, box-shadow 0.3s;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
 }
 
 .pop-seg--lit {
@@ -910,7 +923,7 @@ body {
   box-shadow: 0 0 4px var(--amber-glow);
 }
 
-.pop-seg--lit:nth-child(n+8) {
+.pop-seg--lit:nth-child(n + 8) {
   background: var(--amber-bright);
   box-shadow: 0 0 6px var(--amber-glow);
 }
@@ -1034,7 +1047,9 @@ body {
   font-weight: 500;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
 }
 
 .export-btn:hover {
@@ -1092,7 +1107,10 @@ body {
   justify-content: center;
   cursor: pointer;
   color: var(--text-muted);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
   justify-self: end;
 }
 
@@ -1127,7 +1145,9 @@ body {
   font-weight: 500;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: background 0.25s, color 0.25s;
+  transition:
+    background 0.25s,
+    color 0.25s;
 }
 
 .rec-mode-btn + .rec-mode-btn {
@@ -1149,11 +1169,15 @@ body {
 }
 
 /* ─── Discover View ─────────────────── */
-.discover-prompt {
+.discover-prompt,
+.discover-preferences {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 2rem;
+}
+
+.discover-prompt {
   text-align: center;
 }
 
@@ -1245,6 +1269,99 @@ body {
   border-radius: var(--radius);
 }
 
+.discover-preferences-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+  margin-bottom: 1.6rem;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.text-input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--amber-dim);
+}
+
+.helper-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.range-wrap {
+  position: relative;
+}
+
+.range-track {
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.range-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+  border-radius: 3px;
+}
+
+.range-inputs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+}
+
+.range-inputs input[type="range"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 6px;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.range-values {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.range-value {
+  color: var(--amber);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
 .discover-actions {
   margin-top: 2rem;
 }
@@ -1301,6 +1418,10 @@ body {
   }
 
   .catalog-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .discover-preferences-grid {
     grid-template-columns: 1fr;
   }
 
