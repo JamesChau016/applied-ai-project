@@ -16,7 +16,7 @@
  * @returns {Promise<{recommendations: Array, explanation: string}>}
  */
 export async function discoverSongs(playlistSongs, k = 10) {
-  const resp = await fetch("/api/discover", {
+  const resp = await fetch("http://localhost:5000/api/discover", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ playlist: playlistSongs, k }),

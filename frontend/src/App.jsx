@@ -16,6 +16,7 @@ const DISCOVERED_KEY = "vibefinder_discovered_songs";
 const PLAYLIST_KEY = "vibefinder_playlist";
 
 const seedPlaylistById = new Map(seedPlaylist.map((song) => [song.id, song]));
+const catalogSongIds = new Set(songs.map((song) => song.id));
 
 function loadDiscoveredSongs() {
   try {
@@ -34,6 +35,22 @@ function saveDiscoveredSong(song) {
     DISCOVERED_KEY,
     JSON.stringify(Object.fromEntries(discoveredSongsMap)),
   );
+}
+
+function hydrateDiscoveredSongs(playlist) {
+  let changed = false;
+  playlist.forEach((song) => {
+    if (!seedPlaylistById.has(song.id) && !catalogSongIds.has(song.id)) {
+      discoveredSongsMap.set(String(song.id), song);
+      changed = true;
+    }
+  });
+  if (changed) {
+    localStorage.setItem(
+      DISCOVERED_KEY,
+      JSON.stringify(Object.fromEntries(discoveredSongsMap)),
+    );
+  }
 }
 
 function getPlaylistSong(id) {
@@ -60,6 +77,26 @@ function loadPlaylist() {
 
 function savePlaylist(ids) {
   localStorage.setItem(PLAYLIST_KEY, JSON.stringify(ids));
+}
+
+async function fetchPlaylistFromApi() {
+  const resp = await fetch("/api/playlist");
+  if (!resp.ok) {
+    throw new Error(`Failed to load playlist (${resp.status})`);
+  }
+  const data = await resp.json();
+  return Array.isArray(data.playlist) ? data.playlist : [];
+}
+
+async function persistPlaylistToApi(playlist) {
+  const resp = await fetch("/api/playlist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ playlist }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to save playlist (${resp.status})`);
+  }
 }
 
 function exportPlaylist(ids) {
@@ -107,7 +144,36 @@ export default function App() {
 
   useEffect(() => {
     savePlaylist(playlistIds);
+    const payload = playlistIds
+      .map((id) => {
+        const song = getPlaylistSong(id);
+        if (!song) return null;
+        return {
+          ...song,
+          added_at: song.added_at ?? new Date().toISOString(),
+        };
+      })
+      .filter(Boolean);
+    persistPlaylistToApi(payload).catch((err) => {
+      console.warn("Failed to persist playlist:", err);
+    });
   }, [playlistIds]);
+
+  useEffect(() => {
+    let active = true;
+    fetchPlaylistFromApi()
+      .then((playlist) => {
+        if (!active || playlist.length === 0) return;
+        hydrateDiscoveredSongs(playlist);
+        setPlaylistIds(playlist.map((song) => song.id));
+      })
+      .catch((err) => {
+        console.warn("Failed to load playlist from API:", err);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const toggleSave = useCallback((id) => {
     setPlaylistIds((prev) =>
@@ -269,8 +335,18 @@ export default function App() {
                   onClick={() => setRecMode("discover")}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5" stroke="currentColor" strokeWidth="1" />
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6.5"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                    />
+                    <path
+                      d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                    />
                     <path d="M6.5 6.5L9 7L9.5 9.5L7 9Z" fill="currentColor" />
                   </svg>
                   Discover
@@ -414,7 +490,9 @@ export default function App() {
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.4 }}
                         >
-                          <h2 className="section-title">Top 5 Recommendations</h2>
+                          <h2 className="section-title">
+                            Top 5 Recommendations
+                          </h2>
                           <p className="results-hint">
                             Click a card to see the scoring breakdown
                           </p>
